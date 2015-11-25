@@ -1,0 +1,41 @@
+{
+  "title": "Silver Bullet Editor",
+  "type": "object",
+  "properties": {
+    "data": {
+      "type": "string",
+      "title": "Paste raw data here...",
+      "format":"textarea",
+      "default": ""
+    },
+    "strings": {
+      "type": "object",
+      "title": "Strings",
+      "properties": {
+        "title": {
+          "type": "string",
+          "default": "To come",
+          "minLength": 1,
+          "title": "Title"
+        },
+        "subtitle": {
+          "type": "string",
+          "default": "To come",
+          "minLength": 1,
+          "title": "Subtitle"
+        },
+        "source": {
+          "type": "string",
+          "default": "Source: to come",
+          "minLength": 1,
+          "title": "Source"
+        },
+        "footnote": {
+          "type": "string",
+          "default": "",
+          "title": "Footnote"
+        }
+      }
+    }
+  }
+}

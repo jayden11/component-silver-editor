@@ -1,0 +1,22 @@
+{
+  "context": "print",
+  "style": "bars",
+  "data": [
+    { "category": "Two", "value": 2 },
+    { "category": "Four", "value": 4 }
+  ],
+  "strings": {
+    "title": { "content": "Title to come, title to come, title to come, title to come" },
+    "subtitle": { "content": "Subtitle to come with additional text to force us to wrap" },
+    "source": { "content": "Source: to come with additional text to force wrap" },
+    "footnote": { "content": "Footnote to come..." }
+  },
+  "dimensions": {
+    "outerbox": { "width": 160, "height": 155 }
+  },
+  "seriesCount": 1,
+  "pointCount": 2,
+  "longestCatString": "Four",
+  "minmax": {"min":0, "max": 5, "increment": 1, "ticks": 5},
+  "__NOTES__": "This matches SilverBullet's default config object. Editor updates and passes up..."
+}

@@ -1,0 +1,22 @@
+.form-control {
+  font-family: 'OfficinaSanITC-Book' !important;
+  font-size: 12px;
+}
+
+.form-control label {
+  font-weight: normal;
+  color: #555;
+  margin-bottom: 0 !important;
+  margin-top: 5px !important;
+}
+
+.form-control textarea {
+  font-family: 'OfficinaSanITC-Book' !important;
+  height: 120px !important;
+  margin-top: 3px !important;
+}
+
+.form-control input {
+  width: 95%;
+  padding: 3px 0 0 0;
+}
