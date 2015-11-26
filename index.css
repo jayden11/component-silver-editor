@@ -14,6 +14,7 @@
   font-family: 'OfficinaSanITC-Book' !important;
   height: 120px !important;
   margin-top: 3px !important;
+  tab-size: 30;
 }
 
 .form-control input {

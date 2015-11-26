@@ -1,6 +1,9 @@
 {
   "title": "Silver Bullet Editor",
   "type": "object",
+  "options": {
+    "collapsed": false
+  },
   "properties": {
     "data": {
       "type": "string",
@@ -10,6 +13,9 @@
     },
     "strings": {
       "type": "object",
+      "options": {
+        "collapsed": false
+      },
       "title": "Strings",
       "properties": {
         "title": {
@@ -34,6 +40,34 @@
           "type": "string",
           "default": "",
           "title": "Footnote"
+        }
+      }
+    },
+    "dimensions": {
+      "type": "object",
+      "id": "dimensions",
+      "options": {
+        "collapsed": false
+      },
+      "title": "Chart size",
+      "properties": {
+        "width": {
+          "type": "integer",
+          "default": 160,
+          "title": "Width (pts/px)",
+          "template": "{{columns}*5}",
+          "watch": {
+            "columns": "dimensions.columns"
+          }
+        },
+        "columns": {
+          "type": "string",
+          "enum": ["1 column", "2 columns", "3 columns"]
+        },
+        "height": {
+          "type": "integer",
+          "default": 155,
+          "title": "Height (pts/px)"
         }
       }
     }

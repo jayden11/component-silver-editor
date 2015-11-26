@@ -35,9 +35,11 @@ export default class SilverEditor extends React.Component {
     schemaObj.disable_edit_json = true;
     schemaObj.disable_properties = true;
     const editorForm = new JSONEditor(document.getElementById('json-editor'), schemaObj);
+    // Remove the root 'Collapse' button:
+    // editorForm.getEditor('root').toggle_button.remove();
     // Intercept tabs in raw data text area, to prevent default focus-shift...
     const textarea = document.querySelectorAll('.form-control textarea')[0];
-    textarea.onkeypress = this.catchTabEvent.bind(this);
+    textarea.onkeydown = this.catchTabEvent.bind(this);
     //    NOTE: I can use next to overwrite schema 'default' values with a
     //    simple set of element/value properties. However, the 'editorconfig.json'
     //    file that I assembled doesn't currently match structure. This needs
@@ -107,6 +109,8 @@ export default class SilverEditor extends React.Component {
       strObj[key] = { content: editorVals.strings[key] };
     }
     config.strings = strObj;
+    // I'm not sure that we'll ever use the headers, but still...
+    config.headers = dataObj.headers;
     // For now, hard-code in other properties:
     config.context = 'print';
     config.style = 'bars';
@@ -147,14 +151,17 @@ export default class SilverEditor extends React.Component {
     // Do we have headers? If not, invent them:
     // (*** more to do here: can't stay locked to category/value ***)
     let headArray = [];
-    if (data[0][0] === 'category') {
+    // Original hard-check for 'category':
+    // if (data[0][0] === 'category') {
+    // Now look for string in data[0][1]
+    if (isNaN(data[0][1])) {
       headArray = data.shift();
       rLen--;
     } else {
       headArray = [ 'category' ];
       for (let i = 1; i < cLen; i++) {
-        // headArray.push(`value${i}`);
-        headArray.push(`value`);
+        // headArray.push(`value`);
+        headArray.push(`value${i}`);
       }
     }
     // So headArray is an array of header strings
@@ -170,8 +177,8 @@ export default class SilverEditor extends React.Component {
         let val = thisRow[cNo];
         tempObj[seriesName] = val;
         if (cNo > 0) {
-          // val is a string, so...
-          if (val.search('.') > -1) {
+          // val is a string: parseFloat/Int acc'g to dec...
+          if (val.search(/\./) > -1) {
             val = parseFloat(val);
           } else {
             val = parseInt(val, 10);
@@ -252,6 +259,8 @@ export default class SilverEditor extends React.Component {
     // pre-empt default tab-switches-focus and put a tab in data field
     catchTabEvent(event) {
       if (event.keyCode === 9) {
+        // prevent the focus lose
+        event.preventDefault();
         const target = event.target;
         const start = target.selectionStart;
         const end = target.selectionEnd;
@@ -262,8 +271,6 @@ export default class SilverEditor extends React.Component {
         target.value = `${textBefore}\t${textAfter}`;
         // put caret at right position again (add one for the tab)
         target.selectionStart = target.selectionEnd = start + 1;
-        // prevent the focus lose
-        event.preventDefault();
       }
     }
     // CATCH TAB EVENT ends
