@@ -1,6 +1,6 @@
 import React from 'react';
 import EditorSchema from './assets/editorschema.json';
-// import EditorConfig from './assets/editorconfig.json';
+import EditorConfig from './assets/editorconfig.json';
 // * global document */
 
 export default class SilverEditor extends React.Component {
@@ -8,6 +8,7 @@ export default class SilverEditor extends React.Component {
   static get propTypes() {
     return {
       operations: React.PropTypes.object.isRequired,
+      widthsArray: React.PropTypes.array,
       passUpdatedConfig: React.PropTypes.func.isRequired,
     };
   }
@@ -15,12 +16,13 @@ export default class SilverEditor extends React.Component {
   // DEFAULT PROPS
   // default operations props here for now:
   static get defaultProps() {
-    // return {
-    //   operations: {
-    //     ticks: 5,
-    //     plausibleIncrements: [ 0.25, 0.5, 1, 2, 3, 5, 10, 20, 25, 50, 100, 200, 500, 1000, 2000 ],
-    //   },
-    // };
+    return {
+      operations: {
+        ticks: 5,
+        plausibleIncrements: [ 0.25, 0.5, 1, 2, 3, 5, 10, 20, 25, 50, 100, 200, 500, 1000, 2000 ],
+      },
+      widthsArray: [ 155, 220, 300 ],
+    };
   }
 
   // COMPONENT DID MOUNT
@@ -34,20 +36,23 @@ export default class SilverEditor extends React.Component {
     // 2 options disable unwanted elements:
     schemaObj.disable_edit_json = true;
     schemaObj.disable_properties = true;
-    const editorForm = new JSONEditor(document.getElementById('json-editor'), schemaObj);
+    this.editorForm = new JSONEditor(document.getElementById('json-editor'), schemaObj);
     // Remove the root 'Collapse' button:
-    // editorForm.getEditor('root').toggle_button.remove();
+    // this.editorForm.getEditor('root').toggle_button.remove();
     // Intercept tabs in raw data text area, to prevent default focus-shift...
     const textarea = document.querySelectorAll('.form-control textarea')[0];
     textarea.onkeydown = this.catchTabEvent.bind(this);
-    //    NOTE: I can use next to overwrite schema 'default' values with a
-    //    simple set of element/value properties. However, the 'editorconfig.json'
-    //    file that I assembled doesn't currently match structure. This needs
-    //    thinking through...
-    // editorForm.setValue(this.props.config);
-    editorForm.on('change', () => {
-      if (this.validateForm(editorForm)) {
-        this.returnConfig(editorForm);
+    // Intercept column-count change:
+    const columnDropDown = document.querySelectorAll('.form-control select')[0];
+    columnDropDown.onchange = this.catchColumnEvent.bind(this);
+    // const colDD = this.editorForm.root.getChildEditors().dimensions.editors.columns;
+    // this.editorForm.watch('root.dimensions.columns', function(e) {
+    //    debugger;
+    // });
+
+    this.editorForm.on('change', () => {
+      if (this.validateForm(this.editorForm)) {
+        this.returnConfig(this.editorForm);
       } else {
         console.log('Invalid data...');
       }
@@ -62,8 +67,8 @@ export default class SilverEditor extends React.Component {
     // First, run JSONEditor's validation. This is fairly basic: concerned
     // with value types (string, interger) and lengths (min/max)
     const errors = eForm.validate();
-    console.log(`${errors.length} errors...`);
     if (errors.length > 0) {
+      console.log(`Oops! Found ${errors.length} errors...`);
       return false;
     }
     // Get actual values:
@@ -85,10 +90,16 @@ export default class SilverEditor extends React.Component {
   returnConfig(eForm) {
     // Get actual values:
     const editorVals = eForm.getValue();
+    // Find out what we can from the data
+    // (data, headers, min/max/incr, point/seriesCount, longestCatString)
     const dataObj = this.unpickTsv(editorVals.data);
     // ...which yields an object with various values that we need.
     // So pack them into a config object...
     const config = {};
+    // For now, hard-code in context and style properties:
+    config.context = 'print';
+    config.style = 'bars';
+    // Data:
     config.data = dataObj.data;
     // Min/max/increment:
     // *** Careful: HARD-WIRED TO SINGLE-SCALE AT PRESENT.
@@ -97,7 +108,13 @@ export default class SilverEditor extends React.Component {
     const mmiObj = this.getScaleMinMaxIncr(0, dataObj.maxVal, this.props.operations.ticks);
     // Unpick:
     config.minmax = mmiObj;
+    // Next comm'd out... I think because tick count is size-related...
+    // NOTE: but watch out, now we can tweak chart width...
     // config.ticks = mmiObj.ticks;
+    // Do I have to force the chart height (eg bar chart)...?
+    // Get context-specific margins
+    const margins = EditorConfig.dimensions[config.context].margins;
+    const forcedHeight = this.barChartForcedHeight(dataObj, margins);
     config.pointCount = dataObj.pointCount;
     config.seriesCount = dataObj.seriesCount;
     config.longestCatString = dataObj.longestCatString;
@@ -109,15 +126,26 @@ export default class SilverEditor extends React.Component {
       strObj[key] = { content: editorVals.strings[key] };
     }
     config.strings = strObj;
-    // I'm not sure that we'll ever use the headers, but still...
+    // Width and height of outerbox:
+    const dimObj = { outerbox: {} };
+    dimObj.outerbox.width = editorVals.dimensions.width;
+    dimObj.outerbox.height = forcedHeight;  // editorVals.dimensions.height;
+    config.dimensions = dimObj;
+    // Headers (yes: we need these for D3 colour mapping)
     config.headers = dataObj.headers;
-    // For now, hard-code in other properties:
-    config.context = 'print';
-    config.style = 'bars';
-    config.dimensions = { 'outerbox': { 'width': 160, 'height': 155 } };
     this.props.passUpdatedConfig(config);
   }
   // RETURN CONFIG ends
+
+  // GET FORCED HEIGHT
+  // Some styles -- well, bar charts, anyway -- force the chart height
+  // Param is formEditor.getValues
+  barChartForcedHeight(eConfig, margins) {
+    const pointCount = eConfig.pointCount;
+    // For now:
+    const height = margins.top + margins.bottom + (pointCount * 10);
+    return height;
+  }
 
 
   // UNPICK TSV
@@ -259,7 +287,7 @@ export default class SilverEditor extends React.Component {
     // pre-empt default tab-switches-focus and put a tab in data field
     catchTabEvent(event) {
       if (event.keyCode === 9) {
-        // prevent the focus lose
+        // prevent the focus loss
         event.preventDefault();
         const target = event.target;
         const start = target.selectionStart;
@@ -275,6 +303,26 @@ export default class SilverEditor extends React.Component {
     }
     // CATCH TAB EVENT ends
 
+    // CATCH COLUMN EVENT
+    // Called for column-width dropdown to update
+    // width input.
+    catchColumnEvent(event) {
+      const iii = event.target.selectedIndex;
+      // NOTE: at present, the dropdown displays an empty first
+      // item, which I need to ignore...
+      if (iii > 0) {
+        // NOTE: column widths are hard-coded into this component as props
+        // NOTE: I need that lookup file!!
+        const widthEl = this.editorForm.getEditor('root.dimensions.width');
+        widthEl.setValue(this.props.widthsArray[iii - 1]);
+      }
+      // Leftovers from when I used literal string...
+      // const colCount = parseInt(event.target.value.split(' '), 10) - 1;
+      // const val = this.props.widthsArray[colCount];
+      // const widthEl = this.editorForm.getEditor('root.dimensions.width');
+      // widthEl.setValue(val);
+    }
+    // CATCH COLUMN EVENT ends
 
   // RENDER is vestigial: just draw something for componentDidMount to target...
   render() {

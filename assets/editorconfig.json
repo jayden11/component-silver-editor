@@ -12,11 +12,14 @@
     "footnote": { "content": "Footnote to come..." }
   },
   "dimensions": {
-    "outerbox": { "width": 160, "height": 155 }
+    "print": {
+      "outerbox": { "width": 160, "height": 155 },
+      "margins": { "top": 40, "right": 12, "bottom": 15, "left": 12 }
+    }
   },
   "seriesCount": 1,
   "pointCount": 2,
   "longestCatString": "Four",
   "minmax": {"min":0, "max": 5, "increment": 1, "ticks": 5},
-  "__NOTES__": "This matches SilverBullet's default config object. Editor updates and passes up..."
+  "__NOTES__": "This is now the default config object. SilverBullet no longer has one..."
 }
