@@ -54,11 +54,7 @@
         "width": {
           "type": "integer",
           "default": 160,
-          "title": "Width (pts/px)",
-          "template": "{{columns}*5}",
-          "watch": {
-            "columns": "dimensions.columns"
-          }
+          "title": "Width (pts/px)"
         },
         "columns": {
           "type": "string",
