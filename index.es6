@@ -49,56 +49,84 @@ export default class SilverEditor extends React.Component {
     // this.editorForm.watch('root.dimensions.columns', function(e) {
     //    debugger;
     // });
-
     this.editorForm.on('change', () => {
       if (this.validateForm(this.editorForm)) {
-        this.returnConfig(this.editorForm);
+        // Do the TSV-to-Json conversion and check the validity of the data
+        const unpickedConfig = this.unpickConfig(this.editorForm);
+        // Check the config object's 'isValid' flag:
+        if (unpickedConfig.isValid) {
+          // Data has passed both validity checks.
+          // Update height recommendation for bar charts:
+          // this.editorForm.getEditor('root.dimensions.height').label.textContent
+          // Display recommended height (if bar chart):
+          this.showBarHeightRecommendation(unpickedConfig);
+          // And pass the config object back to SilverBullet:
+          this.passConfigToSibyl(unpickedConfig);
+        } else {
+          console.log('Invalid data: details to be enumerated eventually...');
+        }
       } else {
-        console.log('Invalid data...');
+        console.log('Invalid data: check form for details...');
       }
     });
   }
   // COMPONENT DID MOUNT ends
 
+  // SHOW BAR HEIGHT RECOMMENDATION
+  // Called from componentDidMount. Passed the validated config object,
+  // if this is a bar chart, calculates and displays the recommended
+  // height based on number of bars...
+  showBarHeightRecommendation(config) {
+    const hLabel = this.editorForm.getEditor('root.dimensions.height').label;
+    // NOTE: chart style hard-coded here for now. Eventually get style from editorForm...
+    const style = 'bars';
+    // Default returned for non-bars:
+    let str = 'Height (pts/px';
+    if (style === 'bars') {
+      // NOTE: I'll have to catch stacked and overlapping bars eventually...
+      str += ` - recommended: ${this.getBarChartHeight(config)}`;
+    }
+    // Close parenth, and display:
+    str += ')';
+    hLabel.textContent = str;
+  }
+    // SHOW BAR HEIGHT RECOMMENDATION
+
   // VALIDATE FORM
-  // Actually, I can't really separate validation of the raw data,
-  // at least, from unpicking. But for now, anyway...
+  // I can't separate detailed validation of the raw data
+  // from unpicking. so this just runs JsonEditor's validation.
+  // This is fairly basic: value types (string, interger) and lengths (min/max)
   validateForm(eForm) {
-    // First, run JSONEditor's validation. This is fairly basic: concerned
-    // with value types (string, interger) and lengths (min/max)
+    let isValid = true;
     const errors = eForm.validate();
     if (errors.length > 0) {
       console.log(`Oops! Found ${errors.length} errors...`);
-      return false;
+      isValid = false;
     }
-    // Get actual values:
-    const editorVals = eForm.getValue();
-    // NOTE: now -- to come -- set up specific integrity checks
-    // on things like incr = exact divisor of (max - min)
-    //
-    // For now: just a crude check that there IS data:
-    if (editorVals.data.length < 1) {
-      return false;
-    }
-    // ...and eventually, if we're still here...
-    return true;
+    return isValid;
   }
   // VALIDATE FORM ends
 
-  // RETURN CONFIG
+  // UNPICK CONFIG
   // Reshape form values to suit SilverBullet, then pass back...
-  returnConfig(eForm) {
+  unpickConfig(eForm) {
     // Get actual values:
     const editorVals = eForm.getValue();
+    // We plan to return a config object...
+    // ...which is invalid by default
+    const config = { isValid: false };
+    // NOTE: for now, hard-code in context and style properties:
+    config.context = 'print';
+    config.style = 'bars';
     // Find out what we can from the data
     // (data, headers, min/max/incr, point/seriesCount, longestCatString)
     const dataObj = this.unpickTsv(editorVals.data);
-    // ...which yields an object with various values that we need.
-    // So pack them into a config object...
-    const config = {};
-    // For now, hard-code in context and style properties:
-    config.context = 'print';
-    config.style = 'bars';
+    // Check validity:
+    if (!dataObj.isValid) {
+      console.log(dataObj.validityMsg);
+      return config;
+    }
+    // So dataObj yields various properties that we need.
     // Data:
     config.data = dataObj.data;
     // Min/max/increment:
@@ -113,8 +141,9 @@ export default class SilverEditor extends React.Component {
     // config.ticks = mmiObj.ticks;
     // Do I have to force the chart height (eg bar chart)...?
     // Get context-specific margins
-    const margins = EditorConfig.dimensions[config.context].margins;
-    const forcedHeight = this.barChartForcedHeight(dataObj, margins);
+    // NOTE: messy here -- I'm sure some of this needs clearing out...
+    // const margins = EditorConfig.dimensions[config.context].margins;
+    // const forcedHeight = this.barChartForcedHeight(dataObj, margins);
     config.pointCount = dataObj.pointCount;
     config.seriesCount = dataObj.seriesCount;
     config.longestCatString = dataObj.longestCatString;
@@ -129,24 +158,76 @@ export default class SilverEditor extends React.Component {
     // Width and height of outerbox:
     const dimObj = { outerbox: {} };
     dimObj.outerbox.width = editorVals.dimensions.width;
-    dimObj.outerbox.height = forcedHeight;  // editorVals.dimensions.height;
+    // dimObj.outerbox.height = forcedHeight;
+    dimObj.outerbox.height = editorVals.dimensions.height;
     config.dimensions = dimObj;
     // Headers (yes: we need these for D3 colour mapping)
     config.headers = dataObj.headers;
-    this.props.passUpdatedConfig(config);
+    // Still here? Must (ha!) be OK...
+    config.isValid = true;
+    return config;
   }
   // RETURN CONFIG ends
 
-  // GET FORCED HEIGHT
-  // Some styles -- well, bar charts, anyway -- force the chart height
-  // Param is formEditor.getValues
-  barChartForcedHeight(eConfig, margins) {
-    const pointCount = eConfig.pointCount;
-    // For now:
-    const height = margins.top + margins.bottom + (pointCount * 10);
-    return height;
+  // PASS CONFIG TO SIBYL
+  // Simply lobs the config object back up the tree
+  passConfigToSibyl(config) {
+    this.props.passUpdatedConfig(config);
   }
+  // PASS CONFIG TO SIBYL ends
 
+  // GET BAR CHART HEIGHT
+  // Some styles -- well, bar charts, anyway -- force the chart height
+  // Param is the validated config object
+  getBarChartHeight(config) {
+    // NOTE: hard-coded to print for now...
+    const context = 'print';
+    // Chart style: this could be 'sidebyside', 'stacked', or 'overlap'
+    // NOTE: hard-coded for now...
+    const chartStyle = 'sidebyside';
+    // Get default margins (not user-tweakable)
+    const margins = EditorConfig.dimensions[context].margins;
+    // Number of points and series
+    const pointCount = config.pointCount;
+    let seriesCount = config.seriesCount;
+    // If bars are stacked, that counts, for this function's purposes, as
+    // a single trace:
+    if (chartStyle === 'stacked') {
+      seriesCount = 1;
+    }
+    // Hard-coded (for now) array of cluster-heights to use if bars are side-by-side.
+    // Up to a maximum of four traces, sets cluster-height val. So if there's
+    // just one trace, each bar is 8pts high; if there are 4 (or more) traces,
+    // each cluster is 20px high...
+    // *** NOTE: ANOTHER ITEM TO GO INTO A GENERAL PREFS FILE ***
+    const depthsArray = [ 8, 14, 18, 20 ];
+    // Gap height: NOTE: another one for the prefs file
+    const gapHeight = 5;
+    // We only calculate for up to 4 traces (ie, above 4, just squeeze)
+    if (seriesCount > depthsArray.length) {
+      seriesCount = depthsArray.length - 1;
+    }
+    // So: height of one cluster
+    const clusterHeight = depthsArray[seriesCount - 1];
+    // ...and height of all bars together
+    let innerBoxHeight = clusterHeight * pointCount;
+    // Adjust for overlapping
+    // (I've lifted this straight from my old Excel code. Frankly,
+    // I don't understand it any more...)
+    // Firefox doesn't like 'includes', so:
+    if (chartStyle.search('overlap') >= 0) {
+      innerBoxHeight -= clusterHeight;
+      innerBoxHeight -= ((clusterHeight / 2) * (seriesCount - 1));
+    }
+    // Now allow for gaps, and return...
+    innerBoxHeight += (gapHeight * (pointCount - 1));
+    // Add top and bottom margins, round up to nearest 5, and return:
+    const returnedHeight = innerBoxHeight + margins.top + margins.bottom;
+    return Math.ceil( returnedHeight / 5 ) * 5;
+  }
+  // GET BAR CHART HEIGHT ends
+
+  // ====================================
 
   // UNPICK TSV
   // Converts tsv into an array of objects with 'category' and 'value' properties
@@ -160,6 +241,8 @@ export default class SilverEditor extends React.Component {
   //  pointCount
   //  seriesCount
   unpickTsv(tsv) {
+    // Object to return; valid property is an empty string
+    const config = { isValid: true };
     // Max val, longest cat string, and data array to return:
     let maxVal = 0;
     let maxCatLen = 0;
@@ -167,8 +250,15 @@ export default class SilverEditor extends React.Component {
     const dArray = [];
     // Convert string to an array (by rows)
     const data = tsv.split(/\r?\n/);
-    // Count rows (points):
+    // Count rows (headers + however many points):
     let rLen = data.length;
+    // Minimum 2 rows:
+    if (rLen < 2) {
+      config.isValid = false;
+      config.validityMsg = 'Data must consist of at least 2 rows: headers plus 1 item...';
+      return config;
+    }
+    // NOTE: further validity checks to come...
     // Now turn each 'row' into an array:
     for (let rNo = 0; rNo < rLen; rNo++) {
       data[rNo] = data[rNo].split(/\t/);
@@ -225,17 +315,18 @@ export default class SilverEditor extends React.Component {
       }
       dArray.push(tempObj);
     }
-    // Return data (array of objects), maxVal and array of headers, plus
-    // number of series (i.e. cols - 1) and points (rows, without headers),
-    // and longest string found...
-    return {
-      data: dArray,
-      maxVal,
-      headers: headArray,
-      seriesCount: (cLen - 1),
-      pointCount: rLen,
-      longestCatString: longestCat,
-    };
+    // Still here? All checked out. Return data (array of objects),
+    // maxVal and array of headers, plus number of series (i.e. cols - 1)
+    // and points (rows, without headers), and longest string found...
+    // with reset validity flag (no need to reset validityMsg)
+    config.data = dArray;
+    config.maxVal = maxVal;
+    config.headers = headArray;
+    config.seriesCount = (cLen - 1);
+    config.pointCount = rLen;
+    config.longestCatString = longestCat;
+    config.isValid = true;
+    return config;
   }
   // UNPICK TSV ends
 
@@ -282,7 +373,7 @@ export default class SilverEditor extends React.Component {
     }
     // MIN MAX OBJECT ends
 
-    // CATCH TAB DOWN EVENT
+    // CATCH TAB EVENT
     // Called from render > textarea > keydown event to
     // pre-empt default tab-switches-focus and put a tab in data field
     catchTabEvent(event) {
