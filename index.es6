@@ -100,7 +100,7 @@ export default class SilverEditor extends React.Component {
     let isValid = true;
     const errors = eForm.validate();
     if (errors.length > 0) {
-      console.log(`Oops! Found ${errors.length} errors...`);
+      // console.log(`Oops! Found ${errors.length} errors...`);
       isValid = false;
     }
     return isValid;
@@ -133,7 +133,7 @@ export default class SilverEditor extends React.Component {
     // *** Careful: HARD-WIRED TO SINGLE-SCALE AT PRESENT.
     // *** Will need to work with 2 scales on scatter charts, eventually...
     // AND PROBABLY IN THE WRONG PLACE -- MOVES DOWN TO ChartWrapper, or something...
-    const mmiObj = this.getScaleMinMaxIncr(0, dataObj.maxVal, this.props.operations.ticks);
+    const mmiObj = this.getScaleMinMaxIncr(dataObj.minVal, dataObj.maxVal, this.props.operations.ticks);
     // Unpick:
     config.minmax = mmiObj;
     // Next comm'd out... I think because tick count is size-related...
@@ -223,7 +223,7 @@ export default class SilverEditor extends React.Component {
     innerBoxHeight += (gapHeight * (pointCount - 1));
     // Add top and bottom margins, round up to nearest 5, and return:
     const returnedHeight = innerBoxHeight + margins.top + margins.bottom;
-    return Math.ceil( returnedHeight / 5 ) * 5;
+    return Math.ceil(returnedHeight / 5) * 5;
   }
   // GET BAR CHART HEIGHT ends
 
@@ -243,10 +243,10 @@ export default class SilverEditor extends React.Component {
   unpickTsv(tsv) {
     // Object to return; valid property is an empty string
     const config = { isValid: true };
-    // Max val, longest cat string, and data array to return:
-    let maxVal = 0;
+    // Longest cat string
     let maxCatLen = 0;
     let longestCat = '.';
+    // Data array to return
     const dArray = [];
     // Convert string to an array (by rows)
     const data = tsv.split(/\r?\n/);
@@ -283,6 +283,9 @@ export default class SilverEditor extends React.Component {
       }
     }
     // So headArray is an array of header strings
+    // Min and max vals. Default to first val in first row
+    let minVal = data[0][1];
+    let maxVal = data[0][1];
     // Now convert from raw data structure array/array to my array/object
     // By row
     for (let rNo = 0; rNo < rLen; rNo++) {
@@ -301,6 +304,10 @@ export default class SilverEditor extends React.Component {
           } else {
             val = parseInt(val, 10);
           }
+          // NOTE: the trouble with this is that min can never be more
+          if (val < minVal) {
+            minVal = val;
+          }
           if (val > maxVal) {
             maxVal = val;
           }
@@ -315,11 +322,12 @@ export default class SilverEditor extends React.Component {
       }
       dArray.push(tempObj);
     }
-    // Still here? All checked out. Return data (array of objects),
-    // maxVal and array of headers, plus number of series (i.e. cols - 1)
+    // Still here? All checked out. Return data (array of objects), actual
+    // min/maxVal and array of headers, plus number of series (i.e. cols - 1)
     // and points (rows, without headers), and longest string found...
     // with reset validity flag (no need to reset validityMsg)
     config.data = dArray;
+    config.minVal = minVal;
     config.maxVal = maxVal;
     config.headers = headArray;
     config.seriesCount = (cLen - 1);
