@@ -63,7 +63,8 @@
         "height": {
           "type": "integer",
           "default": 155,
-          "title": "Height (pts/px)"
+          "title": "Height (pts/px)",
+          "description": "&nbsp;"
         }
       }
     }

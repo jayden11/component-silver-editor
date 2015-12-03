@@ -76,19 +76,32 @@ export default class SilverEditor extends React.Component {
   // Called from componentDidMount. Passed the validated config object,
   // if this is a bar chart, calculates and displays the recommended
   // height based on number of bars...
+  // NOTE: I'll have to catch stacked and overlapping bars eventually...
   showBarHeightRecommendation(config) {
-    const hLabel = this.editorForm.getEditor('root.dimensions.height').label;
     // NOTE: chart style hard-coded here for now. Eventually get style from editorForm...
     const style = 'bars';
+    /*
+      NOTE: original version used label...
+      const hLabel = this.editorForm.getEditor('root.dimensions.height').label;
+      let str = 'Height (pts/px';
+      if (style === 'bars') {
+        str += ` - recommended: ${this.getBarChartHeight(config)}`;
+      }
+      str += ')';
+      hLabel.textContent = str;
+    */
     // Default returned for non-bars:
-    let str = 'Height (pts/px';
+    // let str = '<span></span>';
+    const hDescrip = this.editorForm.getEditor('root.dimensions.height').description;
     if (style === 'bars') {
-      // NOTE: I'll have to catch stacked and overlapping bars eventually...
-      str += ` - recommended: ${this.getBarChartHeight(config)}`;
+      // hDescrip.innerHTML = 'Recommended height: <span>120px</span>. Click to use...'
+      hDescrip.innerHTML = `Recommended height: <span>${this.getBarChartHeight(config)}pts</span>. Click to use...`;
+      // Reset event on span:
+      const barRecommendSpan = document.querySelectorAll('.form-control p span')[0];
+      barRecommendSpan.onclick = this.catchBarSpanEvent.bind(this);
+    } else {
+      hDescrip.innerHTML = '';
     }
-    // Close parenth, and display:
-    str += ')';
-    hLabel.textContent = str;
   }
     // SHOW BAR HEIGHT RECOMMENDATION
 
@@ -422,6 +435,14 @@ export default class SilverEditor extends React.Component {
       // widthEl.setValue(val);
     }
     // CATCH COLUMN EVENT ends
+
+    catchBarSpanEvent(event) {
+      // Get the value from the span...
+      const val = parseFloat(event.target.textContent,10);
+      // ...and send to the input:
+      const heightEl = this.editorForm.getEditor('root.dimensions.height');
+      heightEl.setValue(val);
+    }
 
   // RENDER is vestigial: just draw something for componentDidMount to target...
   render() {
