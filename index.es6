@@ -253,34 +253,24 @@ export default class SilverEditor extends React.Component {
   //  maxVal
   //  pointCount
   //  seriesCount
+  // isValid
+  // validityMsg
   unpickTsv(tsv) {
-    // Object to return; valid property is an empty string
-    const config = { isValid: true };
-    // Longest cat string
-    let maxCatLen = 0;
-    let longestCat = '.';
-    // Data array to return
-    const dArray = [];
-    // Convert string to an array (by rows)
-    const data = tsv.split(/\r?\n/);
-    // Count rows (headers + however many points):
-    let rLen = data.length;
-    // Minimum 2 rows:
-    if (rLen < 2) {
-      config.isValid = false;
-      config.validityMsg = 'Data must consist of at least 2 rows: headers plus 1 item...';
+    // Convert the TSV string to an array of organised data
+    // Fcn returns an object with 3 properties: isValid flag,
+    // any error message, and an array of data
+    const dataObj = this.tsvToArray(tsv);
+    const config = Object.assign({}, dataObj);
+    if (!config.isValid) {
       return config;
     }
-    // NOTE: further validity checks to come...
-    // Now turn each 'row' into an array:
-    for (let rNo = 0; rNo < rLen; rNo++) {
-      data[rNo] = data[rNo].split(/\t/);
-    }
-    // Count columns:
+    // Still here? Data pans out...
+    const data = dataObj.data;
+    // Count rows and columns:
+    let rLen = data.length;
     const cLen = data[0].length;
-    // So now we have an array of arrays...
+    // We have an array of arrays...
     // Do we have headers? If not, invent them:
-    // (*** more to do here: can't stay locked to category/value ***)
     let headArray = [];
     // Original hard-check for 'category':
     // if (data[0][0] === 'category') {
@@ -296,10 +286,13 @@ export default class SilverEditor extends React.Component {
       }
     }
     // So headArray is an array of header strings
-    // Min and max vals. Default to first val in first row
-    let minVal = data[0][1];
-    let maxVal = data[0][1];
+    // and data is an array of categories and values
+    // Extract longest category string:
+    const longestCat = this.getLongestCategoryString(data);
+    // Init array to get min and max vals:
+    const minmaxArray = [];
     // Now convert from raw data structure array/array to my array/object
+    const dArray = [];
     // By row
     for (let rNo = 0; rNo < rLen; rNo++) {
       const thisRow = data[rNo];
@@ -311,30 +304,16 @@ export default class SilverEditor extends React.Component {
         let val = thisRow[cNo];
         tempObj[seriesName] = val;
         if (cNo > 0) {
-          // val is a string: parseFloat/Int acc'g to dec...
-          if (val.search(/\./) > -1) {
-            val = parseFloat(val);
-          } else {
-            val = parseInt(val, 10);
-          }
-          // NOTE: the trouble with this is that min can never be more
-          if (val < minVal) {
-            minVal = val;
-          }
-          if (val > maxVal) {
-            maxVal = val;
-          }
-        } else {
-          // Finding longest category string...
-          const catLen = val.length;
-          if (catLen > maxCatLen) {
-            maxCatLen = catLen;
-            longestCat = val;
-          }
+          // val is a string: make it a number:
+          val = this.valStrToNum(val);
+          minmaxArray.push(val);
         }
       }
       dArray.push(tempObj);
     }
+    // Min and max vals:
+    const minVal = Math.min(...minmaxArray);
+    const maxVal = Math.max(...minmaxArray);
     // Still here? All checked out. Return data (array of objects), actual
     // min/maxVal and array of headers, plus number of series (i.e. cols - 1)
     // and points (rows, without headers), and longest string found...
@@ -351,48 +330,110 @@ export default class SilverEditor extends React.Component {
   }
   // UNPICK TSV ends
 
-
-    // MIN MAX OBJECT
-    // Passed 3 args: actual min val; actual max val; ideal number of increment-steps
-    // Returns obj with 4 properties: min, max, increment and an updated step-count
-    getScaleMinMaxIncr(minVal, maxVal, stepNo) {
-      const mmObj = {};
-      // Array of "acceptable" increments
-      const plausibleIncrs = this.props.operations.plausibleIncrements;
-      let min = 0;
-      let max = 0;
-      // Min can't exceed zero; max can't be less than zero
-      minVal = Math.min(0, minVal);
-      maxVal = Math.max(0, maxVal);
-      // Do (max-min) / steps to get a raw increment
-      let incr = (maxVal - minVal) / stepNo;
-      // Increment is presumably imperfect, so loop through
-      // the array of values, raising the increment
-      // to the next acceptable value
-      for (let i = 0; i < plausibleIncrs.length; i++) {
-        const plausVal = plausibleIncrs[i];
-        if (plausVal >= incr) {
-          incr = plausVal;
-          break;
-        }
-      }
-      // From zero, lower min to next acceptable value on or below inherited min
-      while (Math.floor(min) > Math.floor(minVal)) {
-        min -= incr;
-      }
-      // From zero, raise max to next acceptable value on or above inherited max
-      while (max < maxVal) {
-        max += incr;
-      }
-      // Revise number of ticks?
-      const ticks = (max - min) / incr;
-      mmObj.min = min;
-      mmObj.max = max;
-      mmObj.increment = incr;
-      mmObj.ticks = ticks;
-      return mmObj;
+  // TSV TO ARRAY
+  // Called from unpickTsv, converts the TSV string into
+  // an array of data
+  tsvToArray(tsv) {
+    // The object to return will have properties: data, isValid, msg
+    const dataObj = { isValid: true, validityMsg: '' };
+    // Convert tsv to an array of strings (element=row)
+    const data = tsv.split(/\r?\n/);
+    // Count rows (headers + however many points):
+    const rLen = data.length;
+    // Minimum 2 rows:
+    if (rLen < 2) {
+      dataObj.isValid = false;
+      dataObj.validityMsg = 'Data must consist of at least 2 rows: headers plus 1 item...';
+      return dataObj;
     }
-    // MIN MAX OBJECT ends
+    // NOTE: further validity checks very possibly to come...
+    // Still here? Turn each 'row' into an array:
+    for (let rNo = 0; rNo < rLen; rNo++) {
+      // First, check string length to trap empty rows:
+      // NOTE: this might be simpler, however, as a mere item-length comparison
+      // after the row has been split (about 5 lines down)...
+      if (data[rNo].trim().length < 1) {
+        dataObj.isValid = false;
+        dataObj.validityMsg = `Row ${rNo + 1} of data is blank...`;
+        return dataObj;
+      }
+      data[rNo] = data[rNo].split(/\t/);
+    }
+    dataObj.data = data;
+    return dataObj;
+  }
+  // TSV TO ARRAY ends
+
+  // GET LONGEST CAT STRING
+  // Called from unpickTsv to return longest category string.
+  // Param is data array.
+  getLongestCategoryString(data) {
+    let longestCat = '';
+    let maxCatLen = 0;
+    for (const iNo in data) {
+      const cat = data[iNo][0];
+      const catLen = cat.length;
+      if (catLen > maxCatLen) {
+        maxCatLen = catLen;
+        longestCat = cat;
+      }
+    }
+    return longestCat;
+  }
+  // GET LONGEST CAT STRING ends
+
+  // VAL STR TO NUM
+  // Called from unpickTsv. Converts val string tu number
+  valStrToNum(val) {
+    let num = parseInt(val, 10);
+    if (val.search(/\./) > -1) {
+      num = parseFloat(val);
+    }
+    return num;
+  }
+  // VAL STR TO NUM ends
+
+  // MIN MAX OBJECT
+  // Passed 3 args: actual min val; actual max val; ideal number of increment-steps
+  // Returns obj with 4 properties: min, max, increment and an updated step-count
+  getScaleMinMaxIncr(minVal, maxVal, stepNo) {
+    const mmObj = {};
+    // Array of "acceptable" increments
+    const plausibleIncrs = this.props.operations.plausibleIncrements;
+    let min = 0;
+    let max = 0;
+    // Min can't exceed zero; max can't be less than zero
+    minVal = Math.min(0, minVal);
+    maxVal = Math.max(0, maxVal);
+    // Do (max-min) / steps to get a raw increment
+    let incr = (maxVal - minVal) / stepNo;
+    // Increment is presumably imperfect, so loop through
+    // the array of values, raising the increment
+    // to the next acceptable value
+    for (let i = 0; i < plausibleIncrs.length; i++) {
+      const plausVal = plausibleIncrs[i];
+      if (plausVal >= incr) {
+        incr = plausVal;
+        break;
+      }
+    }
+    // From zero, lower min to next acceptable value on or below inherited min
+    while (Math.floor(min) > Math.floor(minVal)) {
+      min -= incr;
+    }
+    // From zero, raise max to next acceptable value on or above inherited max
+    while (max < maxVal) {
+      max += incr;
+    }
+    // Revise number of ticks?
+    const ticks = (max - min) / incr;
+    mmObj.min = min;
+    mmObj.max = max;
+    mmObj.increment = incr;
+    mmObj.ticks = ticks;
+    return mmObj;
+  }
+  // MIN MAX OBJECT ends
 
     // CATCH TAB EVENT
     // Called from render > textarea > keydown event to
@@ -438,7 +479,7 @@ export default class SilverEditor extends React.Component {
 
     catchBarSpanEvent(event) {
       // Get the value from the span...
-      const val = parseFloat(event.target.textContent,10);
+      const val = parseFloat(event.target.textContent, 10);
       // ...and send to the input:
       const heightEl = this.editorForm.getEditor('root.dimensions.height');
       heightEl.setValue(val);

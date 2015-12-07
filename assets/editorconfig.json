@@ -21,5 +21,6 @@
   "pointCount": 2,
   "longestCatString": "Four",
   "minmax": {"min":0, "max": 5, "increment": 1, "ticks": 5},
-  "__NOTES__": "This is now the default config object. SilverBullet no longer has one..."
+  "__NOTES__": "This is now the default config object. SilverBullet no longer has one...",
+  "_ANOTHER_NOTE_": "Surely bar heights, gaps, colours, etc come in this file..."
 }

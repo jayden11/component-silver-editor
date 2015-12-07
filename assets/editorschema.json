@@ -58,7 +58,7 @@
         },
         "columns": {
           "type": "string",
-          "enum": ["1 column", "2 columns", "3 columns"]
+          "enum": ["Narrow", "Medium", "Wide"]
         },
         "height": {
           "type": "integer",
