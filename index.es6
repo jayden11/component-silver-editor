@@ -358,6 +358,11 @@ export default class SilverEditor extends React.Component {
         return dataObj;
       }
       data[rNo] = data[rNo].split(/\t/);
+      if (data[rNo].length < 2) {
+        dataObj.isValid = false;
+        dataObj.validityMsg = `Row ${rNo + 1} of data has only one column...`;
+        return dataObj;
+      }
     }
     dataObj.data = data;
     return dataObj;
