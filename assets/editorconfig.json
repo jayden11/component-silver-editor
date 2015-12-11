@@ -1,4 +1,5 @@
 {
+  "__NOTES__": "This is now the default config object. SilverBullet no longer has one...",
   "context": "print",
   "style": "bars",
   "data": [
@@ -21,6 +22,15 @@
   "pointCount": 2,
   "longestCatString": "Four",
   "minmax": {"min":0, "max": 5, "increment": 1, "ticks": 5},
-  "__NOTES__": "This is now the default config object. SilverBullet no longer has one...",
-  "_ANOTHER_NOTE_": "Surely bar heights, gaps, colours, etc come in this file..."
+  "_NOTE2_": "Style-specific notes",
+  "_NOTE3_": "Bar chart cluster and gaps heights",
+  "barChart": {
+    "_NOTE4_": "Cluster heights for 1, 2, 3 and 4(+) series side-by-side bar charts...",
+    "clusterHeights": [8, 12, 16, 20],
+    "gap": 5,
+  },
+  "columnChart": {
+    "clusterWidths": [8, 12, 16, 20],
+    "gap": 5,
+  }
 }

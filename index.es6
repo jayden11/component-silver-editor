@@ -16,13 +16,7 @@ export default class SilverEditor extends React.Component {
   // DEFAULT PROPS
   // default operations props here for now:
   static get defaultProps() {
-    return {
-      operations: {
-        ticks: 5,
-        plausibleIncrements: [ 0.25, 0.5, 1, 2, 3, 5, 10, 20, 25, 50, 100, 200, 500, 1000, 2000 ],
-      },
-      widthsArray: [ 155, 220, 300 ],
-    };
+    return {};
   }
 
   // COMPONENT DID MOUNT
@@ -131,6 +125,12 @@ export default class SilverEditor extends React.Component {
     // NOTE: for now, hard-code in context and style properties:
     config.context = 'print';
     config.style = 'bars';
+    // Get gap and pass it down...
+    if (config.style === 'bars') {
+      config.gap = EditorConfig.barChart.gap;
+    } else if (config.style === 'columns') {
+      config.gap = EditorConfig.columnChart.gap;
+    }
     // Find out what we can from the data
     // (data, headers, min/max/incr, point/seriesCount, longestCatString)
     const dataObj = this.unpickTsv(editorVals.data);
@@ -208,15 +208,10 @@ export default class SilverEditor extends React.Component {
     if (chartStyle === 'stacked') {
       seriesCount = 1;
     }
-    // Hard-coded (for now) array of cluster-heights to use if bars are side-by-side.
-    // Up to a maximum of four traces, sets cluster-height val. So if there's
-    // just one trace, each bar is 8pts high; if there are 4 (or more) traces,
-    // each cluster is 20px high...
-    // *** NOTE: ANOTHER ITEM TO GO INTO A GENERAL PREFS FILE ***
-    const depthsArray = [ 8, 14, 18, 20 ];
-    // Gap height: NOTE: another one for the prefs file
-    const gapHeight = 5;
-    // We only calculate for up to 4 traces (ie, above 4, just squeeze)
+    // Array of cluster-heights to use if bars are side-by-side,
+    // up to a max of four series (squeeze after that). And gap height.
+    const depthsArray = EditorConfig.barChart.clusterHeights;
+    const gapHeight = EditorConfig.barChart.gap;
     if (seriesCount > depthsArray.length) {
       seriesCount = depthsArray.length - 1;
     }
@@ -233,7 +228,10 @@ export default class SilverEditor extends React.Component {
       innerBoxHeight -= ((clusterHeight / 2) * (seriesCount - 1));
     }
     // Now allow for gaps, and return...
-    innerBoxHeight += (gapHeight * (pointCount - 1));
+    // innerBoxHeight += (gapHeight * (pointCount - 1));
+    // NOTE: previous line assumed no outer padding. But I'm currently
+    // going with outerpadding = innerpadding/2... So:
+    innerBoxHeight += (gapHeight * (pointCount));
     // Add top and bottom margins, round up to nearest 5, and return:
     const returnedHeight = innerBoxHeight + margins.top + margins.bottom;
     return Math.ceil(returnedHeight / 5) * 5;
