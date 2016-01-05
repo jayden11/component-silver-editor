@@ -8,7 +8,6 @@ export default class SilverEditor extends React.Component {
   static get propTypes() {
     return {
       operations: React.PropTypes.object.isRequired,
-      widthsArray: React.PropTypes.array,
       passUpdatedConfig: React.PropTypes.func.isRequired,
     };
   }
@@ -27,22 +26,21 @@ export default class SilverEditor extends React.Component {
     /* eslint-disable camelcase */
     const schemaObj = {};
     schemaObj.schema = EditorSchema;
+    // NOTE: At present I set up column width dropdown items in 2 places,
+    // the schema and the operations lookup. Can I combine them -- ideally,
+    // refer only to operations...?
     // 2 options disable unwanted elements:
     schemaObj.disable_edit_json = true;
     schemaObj.disable_properties = true;
     this.editorForm = new JSONEditor(document.getElementById('json-editor'), schemaObj);
     // Remove the root 'Collapse' button:
-    // this.editorForm.getEditor('root').toggle_button.remove();
+    this.editorForm.getEditor('root').toggle_button.remove();
     // Intercept tabs in raw data text area, to prevent default focus-shift...
     const textarea = document.querySelectorAll('.form-control textarea')[0];
     textarea.onkeydown = this.catchTabEvent.bind(this);
     // Intercept column-count change:
     const columnDropDown = document.querySelectorAll('.form-control select')[0];
     columnDropDown.onchange = this.catchColumnEvent.bind(this);
-    // const colDD = this.editorForm.root.getChildEditors().dimensions.editors.columns;
-    // this.editorForm.watch('root.dimensions.columns', function(e) {
-    //    debugger;
-    // });
     this.editorForm.on('change', () => {
       if (this.validateForm(this.editorForm)) {
         // Do the TSV-to-Json conversion and check the validity of the data
@@ -74,21 +72,8 @@ export default class SilverEditor extends React.Component {
   showBarHeightRecommendation(config) {
     // NOTE: chart style hard-coded here for now. Eventually get style from editorForm...
     const style = 'bars';
-    /*
-      NOTE: original version used label...
-      const hLabel = this.editorForm.getEditor('root.dimensions.height').label;
-      let str = 'Height (pts/px';
-      if (style === 'bars') {
-        str += ` - recommended: ${this.getBarChartHeight(config)}`;
-      }
-      str += ')';
-      hLabel.textContent = str;
-    */
-    // Default returned for non-bars:
-    // let str = '<span></span>';
     const hDescrip = this.editorForm.getEditor('root.dimensions.height').description;
     if (style === 'bars') {
-      // hDescrip.innerHTML = 'Recommended height: <span>120px</span>. Click to use...'
       hDescrip.innerHTML = `Recommended height: <span>${this.getBarChartHeight(config)}pts</span>. Click to use...`;
       // Reset event on span:
       const barRecommendSpan = document.querySelectorAll('.form-control p span')[0];
@@ -107,7 +92,6 @@ export default class SilverEditor extends React.Component {
     let isValid = true;
     const errors = eForm.validate();
     if (errors.length > 0) {
-      // console.log(`Oops! Found ${errors.length} errors...`);
       isValid = false;
     }
     return isValid;
@@ -143,7 +127,7 @@ export default class SilverEditor extends React.Component {
     // Data:
     config.data = dataObj.data;
     // Min/max/increment:
-    // *** Careful: HARD-WIRED TO SINGLE-SCALE AT PRESENT.
+    // NOTE: HARD-WIRED TO SINGLE-SCALE AT PRESENT.
     // *** Will need to work with 2 scales on scatter charts, eventually...
     // AND PROBABLY IN THE WRONG PLACE -- MOVES DOWN TO ChartWrapper, or something...
     const mmiObj = this.getScaleMinMaxIncr(dataObj.minVal, dataObj.maxVal, this.props.operations.ticks);
@@ -154,9 +138,7 @@ export default class SilverEditor extends React.Component {
     // config.ticks = mmiObj.ticks;
     // Do I have to force the chart height (eg bar chart)...?
     // Get context-specific margins
-    // NOTE: messy here -- I'm sure some of this needs clearing out...
-    // const margins = EditorConfig.dimensions[config.context].margins;
-    // const forcedHeight = this.barChartForcedHeight(dataObj, margins);
+    // NOTE: messy here...?
     config.pointCount = dataObj.pointCount;
     config.seriesCount = dataObj.seriesCount;
     config.longestCatString = dataObj.longestCatString;
@@ -171,10 +153,9 @@ export default class SilverEditor extends React.Component {
     // Width and height of outerbox:
     const dimObj = { outerbox: {} };
     dimObj.outerbox.width = editorVals.dimensions.width;
-    // dimObj.outerbox.height = forcedHeight;
     dimObj.outerbox.height = editorVals.dimensions.height;
     config.dimensions = dimObj;
-    // Headers (yes: we need these for D3 colour mapping)
+    // Headers (for D3 colour mapping)
     config.headers = dataObj.headers;
     // Still here? Must (ha!) be OK...
     config.isValid = true;
@@ -253,6 +234,7 @@ export default class SilverEditor extends React.Component {
   //  seriesCount
   // isValid
   // validityMsg
+  // NOTE: list is probably incomplete...
   unpickTsv(tsv) {
     // Convert the TSV string to an array of organised data
     // Fcn returns an object with 3 properties: isValid flag,
@@ -270,9 +252,9 @@ export default class SilverEditor extends React.Component {
     // We have an array of arrays...
     // Do we have headers? If not, invent them:
     let headArray = [];
-    // Original hard-check for 'category':
-    // if (data[0][0] === 'category') {
-    // Now look for string in data[0][1]
+    // Ideally user will enter a row of headers. But if not, we generate
+    // crude default headers: ['category', 'value1', 'value2', etc]
+    // Look for string in data[0][1]:
     if (isNaN(data[0][1])) {
       headArray = data.shift();
       rLen--;
@@ -294,18 +276,15 @@ export default class SilverEditor extends React.Component {
     // By row
     for (let rNo = 0; rNo < rLen; rNo++) {
       const thisRow = data[rNo];
+      // Row total for min/max calculation:
+      const rowValTotal = this.getRowValTotal(thisRow);
+      minmaxArray.push(rowValTotal);
       const tempObj = {};
       // Each element in the row becomes an object property
       // that gets its name from the headers
       for (let cNo = 0; cNo < cLen; cNo++) {
         const seriesName = headArray[cNo];
-        let val = thisRow[cNo];
-        tempObj[seriesName] = val;
-        if (cNo > 0) {
-          // val is a string: make it a number:
-          val = this.valStrToNum(val);
-          minmaxArray.push(val);
-        }
+        tempObj[seriesName] = thisRow[cNo];
       }
       dArray.push(tempObj);
     }
@@ -327,6 +306,23 @@ export default class SilverEditor extends React.Component {
     return config;
   }
   // UNPICK TSV ends
+
+  // GET ROW VAL TOTAL
+  // Called from unpickTSV to add up vals in a data row...
+  // (ES6 array.reduce creates its own problems here, so going
+  // with cheap and cheerful)
+  // NOTE: I'll have to reconsider this if we're to allow opposing bar charts...
+  getRowValTotal(rArray) {
+    // Incoming array has 2 issues:
+    //    item 0 is date/cat, so omit...
+    //    subsequent items are strings, so force to numbers...
+    let total = 0;
+    for (let iii = 1; iii < rArray.length; iii++) {
+      total += Number(rArray[iii]);
+    }
+    return total;
+  }
+  // GET ROW VAL TOTAL ends
 
   // TSV TO ARRAY
   // Called from unpickTsv, converts the TSV string into
@@ -451,32 +447,23 @@ export default class SilverEditor extends React.Component {
         const value = target.value;
         const textBefore = value.substring(0, start);
         const textAfter = value.substring(end);
-        // set textarea value to: text before caret + tab + text after caret
+        // set textarea value to: text before cursor + tab + text after cursor
         target.value = `${textBefore}\t${textAfter}`;
-        // put caret at right position again (add one for the tab)
+        // put cursor at right position again (add one for the tab)
         target.selectionStart = target.selectionEnd = start + 1;
       }
     }
     // CATCH TAB EVENT ends
 
     // CATCH COLUMN EVENT
-    // Called for column-width dropdown to update
-    // width input.
+    // Called from column-width dropdown to update width.
     catchColumnEvent(event) {
-      const iii = event.target.selectedIndex;
-      // NOTE: at present, the dropdown displays an empty first
-      // item, which I need to ignore...
-      if (iii > 0) {
-        // NOTE: column widths are hard-coded into this component as props
-        // NOTE: I need that lookup file!!
+      const str = event.target.value.toLowerCase();
+      const val = this.props.operations.widths[str];
+      if (typeof val !== 'undefined') {
         const widthEl = this.editorForm.getEditor('root.dimensions.width');
-        widthEl.setValue(this.props.widthsArray[iii - 1]);
+        widthEl.setValue(val);
       }
-      // Leftovers from when I used literal string...
-      // const colCount = parseInt(event.target.value.split(' '), 10) - 1;
-      // const val = this.props.widthsArray[colCount];
-      // const widthEl = this.editorForm.getEditor('root.dimensions.width');
-      // widthEl.setValue(val);
     }
     // CATCH COLUMN EVENT ends
 
