@@ -341,6 +341,14 @@ export default class SilverEditor extends React.Component {
       return dataObj;
     }
     // NOTE: further validity checks very possibly to come...
+    // How many 'columns' do we have? Let's assume that top row is the standard
+    const colStandard = data[0].split(/\t/).length;
+    // Min 2 cols:
+    if (colStandard < 2) {
+      dataObj.isValid = false;
+      dataObj.validityMsg = `Data requires categories and at least 1 series of values...`;
+      return dataObj;
+    }
     // Still here? Turn each 'row' into an array:
     for (let rNo = 0; rNo < rLen; rNo++) {
       // First, check string length to trap empty rows:
@@ -352,9 +360,11 @@ export default class SilverEditor extends React.Component {
         return dataObj;
       }
       data[rNo] = data[rNo].split(/\t/);
-      if (data[rNo].length < 2) {
+      const cLen = data[rNo].length;
+      // Check for inconsistent column count (missing/excess tabs)
+      if (cLen !== colStandard) {
         dataObj.isValid = false;
-        dataObj.validityMsg = `Row ${rNo + 1} of data has only one column...`;
+        dataObj.validityMsg = `Row ${rNo + 1} of data is invalid: too few or too many columns...`;
         return dataObj;
       }
     }
