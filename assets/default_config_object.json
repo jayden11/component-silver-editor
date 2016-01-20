@@ -16,6 +16,10 @@
     "print": {
       "outerbox": { "width": 160, "height": 155 },
       "margins": { "top": 40, "right": 12, "bottom": 15, "left": 12 }
+    },
+    "other": {
+      "outerbox": { "width": 160, "height": 155 },
+      "margins": { "top": 40, "right": 12, "bottom": 15, "left": 12 }
     }
   },
   "seriesCount": 1,
@@ -24,12 +28,12 @@
   "minmax": {"min":0, "max": 5, "increment": 1, "ticks": 5},
   "_NOTE2_": "Style-specific notes",
   "_NOTE3_": "Bar chart cluster and gaps heights",
-  "barChart": {
+  "DELETEME_barChart": {
     "_NOTE4_": "Cluster heights for 1, 2, 3 and 4(+) series side-by-side bar charts...",
     "clusterHeights": [8, 12, 16, 20],
     "gap": 5,
   },
-  "columnChart": {
+  "DELETEME_columnChart": {
     "clusterWidths": [8, 12, 16, 20],
     "gap": 5,
   }

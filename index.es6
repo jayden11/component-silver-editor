@@ -1,22 +1,46 @@
-import React from 'react';
-import EditorSchema from './assets/editorschema.json';
-import EditorConfig from './assets/editorconfig.json';
 // * global document */
+import React from 'react';
+// The json schema:
+import EditorSchema from './assets/editor_schema.json';
+// Properties necessary for user-interaction with the Editor
+import EditorConfig from './assets/editor_config.json';
+// The default config object, to be 'sharpened up' and passing down the tree...
+import ConfigObject from './assets/default_config_object.json';
+
+// NOTE: the EDITOR is still very provisional and will remain so until
+// I've sorted out all the structural issues and got all the options
+// into the FORM.
+// Latest update, 19.1.16 did:
+//    - lookup files restructured (see above)
+//    - current context/style node is in state... but is that right??
+// Do I want to re-render if I change values in the FORM...?
 
 export default class SilverEditor extends React.Component {
 
+  // PROP TYPES
   static get propTypes() {
     return {
-      operations: React.PropTypes.object.isRequired,
       passUpdatedConfig: React.PropTypes.func.isRequired,
+      contextString: React.PropTypes.string,
     };
   }
 
   // DEFAULT PROPS
-  // default operations props here for now:
   static get defaultProps() {
     return {};
   }
+
+  // CONSTRUCTOR
+  // This is premature, I think. But set the context/style lookup object
+  // as state. Eventually, as user sets context and style on the Form,
+  // state will update...?
+  constructor(props) {
+    super(props);
+    const specificContext = EditorConfig.contexts[props.contextString];
+    const specificStyle = specificContext.style_specific.bars;
+    this.state = { specificContext, specificStyle };
+  }
+  // CONSTRUCTOR ends
 
   // COMPONENT DID MOUNT
   componentDidMount() {
@@ -24,23 +48,28 @@ export default class SilverEditor extends React.Component {
     /* eslint-disable no-undef */
     /* eslint-disable no-console */
     /* eslint-disable camelcase */
-    const schemaObj = {};
-    schemaObj.schema = EditorSchema;
+    this.schemaObj = {};
+    this.schemaObj.schema = EditorSchema;
+    // 2 options disable unwanted user access:
+    this.schemaObj.disable_edit_json = true;
+    this.schemaObj.disable_properties = true;
+    // Initialise editor form:
+    this.editorForm = new JSONEditor(document.getElementById('json-editor'), this.schemaObj);
+    // Remove the root 'Collapse' button:
+    this.editorForm.getEditor('root').toggle_button.remove();
     // NOTE: At present I set up column width dropdown items in 2 places,
     // the schema and the operations lookup. Can I combine them -- ideally,
     // refer only to operations...?
-    // 2 options disable unwanted elements:
-    schemaObj.disable_edit_json = true;
-    schemaObj.disable_properties = true;
-    this.editorForm = new JSONEditor(document.getElementById('json-editor'), schemaObj);
-    // Remove the root 'Collapse' button:
-    this.editorForm.getEditor('root').toggle_button.remove();
+    this.setDynamicSchemaVals();
     // Intercept tabs in raw data text area, to prevent default focus-shift...
     const textarea = document.querySelectorAll('.form-control textarea')[0];
     textarea.onkeydown = this.catchTabEvent.bind(this);
     // Intercept column-count change:
     const columnDropDown = document.querySelectorAll('.form-control select')[0];
     columnDropDown.onchange = this.catchColumnEvent.bind(this);
+    // When editorForm changes, check and dispatch the config obj to Sibyl
+    // (N.B.: changing dropdown selection doesnt't register as an event; it's only
+    // when a field changes consequently that 'change' is tripped...)
     this.editorForm.on('change', () => {
       if (this.validateForm(this.editorForm)) {
         // Do the TSV-to-Json conversion and check the validity of the data
@@ -48,8 +77,6 @@ export default class SilverEditor extends React.Component {
         // Check the config object's 'isValid' flag:
         if (unpickedConfig.isValid) {
           // Data has passed both validity checks.
-          // Update height recommendation for bar charts:
-          // this.editorForm.getEditor('root.dimensions.height').label.textContent
           // Display recommended height (if bar chart):
           this.showBarHeightRecommendation(unpickedConfig);
           // And pass the config object back to SilverBullet:
@@ -63,6 +90,51 @@ export default class SilverEditor extends React.Component {
     });
   }
   // COMPONENT DID MOUNT ends
+
+  componentWillReceiveProps(newProps) {
+    const newStr = newProps.contextString;
+    const oldStr = this.props.contextString;
+    if (newStr !== oldStr) {
+      const specificContext = EditorConfig.contexts[newStr];
+      // NOTE: hard-coding to bars here
+      const specificStyle = specificContext.style_specific.bars;
+      console.log('Changing state...');
+      this.state = { specificContext, specificStyle };
+      this.setDynamicSchemaVals();
+    }
+  }
+
+  // SET DYNAMIC SCHEMA VALUES
+  // Currently called from componentDidMount only, but may (will?)
+  // be called from other functions. Sets dynamic values in the schema
+  // NOTE: currently assumes that properties are available in state...
+  setDynamicSchemaVals() {
+    // Widths:
+    const widthSource = this.state.specificContext.general.widths;
+    const wArray = Object.keys(widthSource);
+    if (typeof this.editorForm !== 'undefined') {
+      // Let's do this the hard way, by digging down to the innerHTML
+      // Assemble the string:
+      // "<option value="One">One</option><option value="Two">Two</option>"
+      let ddStr = '';
+      for (let i = 0; i < wArray.length; i++) {
+        const str = wArray[i];
+        ddStr += `<option value="${str}">${str}</option>`;
+      }
+      const ddEl = this.editorForm.getEditor('root.dimensions.columns').control.children[1];
+      ddEl.innerHTML = ddStr;
+      // By default, re-populated dropdown displays first item string
+      // Reset the width field with matching value
+      // (Editor registers this as change event and fires off updated config to Sibyl...)
+      const val = this.state.specificContext.general.widths[wArray[0]];
+      this.editorForm.getEditor('root.dimensions.width').setValue(val);
+    } else {
+      // NOTE: this should never run, but keep a check on it for now...
+      console.log('I should not be hitting this point in Editor.setDynamicSchemaVals...');
+      // this.schemaObj.schema.properties.dimensions.properties.columns.enum = wArray;
+    }
+  }
+  // SET DYNAMIC SCHEMA VALUES ends
 
   // SHOW BAR HEIGHT RECOMMENDATION
   // Called from componentDidMount. Passed the validated config object,
@@ -107,14 +179,12 @@ export default class SilverEditor extends React.Component {
     // ...which is invalid by default
     const config = { isValid: false };
     // NOTE: for now, hard-code in context and style properties:
-    config.context = 'print';
-    config.style = 'bars';
-    // Get gap and pass it down...
-    if (config.style === 'bars') {
-      config.gap = EditorConfig.barChart.gap;
-    } else if (config.style === 'columns') {
-      config.gap = EditorConfig.columnChart.gap;
-    }
+    const context = this.props.contextString;
+    config.context = context;
+    const style = 'bars';
+    config.style = style;
+    // Get gap from specific config node and pass it down...
+    config.gap = this.state.specificStyle.gap;
     // Find out what we can from the data
     // (data, headers, min/max/incr, point/seriesCount, longestCatString)
     const dataObj = this.unpickTsv(editorVals.data);
@@ -130,7 +200,9 @@ export default class SilverEditor extends React.Component {
     // NOTE: HARD-WIRED TO SINGLE-SCALE AT PRESENT.
     // *** Will need to work with 2 scales on scatter charts, eventually...
     // AND PROBABLY IN THE WRONG PLACE -- MOVES DOWN TO ChartWrapper, or something...
-    const mmiObj = this.getScaleMinMaxIncr(dataObj.minVal, dataObj.maxVal, this.props.operations.ticks);
+    const ticks = this.state.specificContext.general.ticks;
+    const mmiObj = this.getScaleMinMaxIncr(dataObj.minVal, dataObj.maxVal, ticks);
+    // NOTE: and the hard-wiring to 'print' is problematic
     // Unpick:
     config.minmax = mmiObj;
     // Next comm'd out... I think because tick count is size-related...
@@ -166,6 +238,9 @@ export default class SilverEditor extends React.Component {
   // PASS CONFIG TO SIBYL
   // Simply lobs the config object back up the tree
   passConfigToSibyl(config) {
+    // NOTE: Since there's no 'other' component,
+    // hard-set context to 'print'...
+    config.context = 'print';
     this.props.passUpdatedConfig(config);
   }
   // PASS CONFIG TO SIBYL ends
@@ -174,41 +249,49 @@ export default class SilverEditor extends React.Component {
   // Some styles -- well, bar charts, anyway -- force the chart height
   // Param is the validated config object
   getBarChartHeight(config) {
-    // NOTE: hard-coded to print for now...
-    const context = 'print';
-    // Chart style: this could be 'sidebyside', 'stacked', or 'overlap'
+    // NOTE: hard-coded to print for now. But context and style are already
+    // hard-coded into unpickConfig; and I eventually want to:
+    //    - move defaults into the schema (when there's options to play with)
+    //    - fetch it from there (or from the config obj?)
+    const context = this.props.contextString;
+    // Stacked?
     // NOTE: hard-coded for now...
-    const chartStyle = 'sidebyside';
+    const isStacked = false;
     // Get default margins (not user-tweakable)
-    const margins = EditorConfig.dimensions[context].margins;
+    const margins = ConfigObject.dimensions[context].margins;
     // Number of points and series
     const pointCount = config.pointCount;
     let seriesCount = config.seriesCount;
     // If bars are stacked, that counts, for this function's purposes, as
     // a single trace:
-    if (chartStyle === 'stacked') {
+    if (isStacked) {
       seriesCount = 1;
     }
     // Array of cluster-heights to use if bars are side-by-side,
     // up to a max of four series (squeeze after that). And gap height.
-    const depthsArray = EditorConfig.barChart.clusterHeights;
-    const gapHeight = EditorConfig.barChart.gap;
-    if (seriesCount > depthsArray.length) {
-      seriesCount = depthsArray.length - 1;
+    // NOTE: more hard-coding...
+    const clusterHeights = this.state.specificStyle.clusterHeights;
+    const gapHeight = this.state.specificStyle.gap;
+    if (seriesCount > clusterHeights.length) {
+      seriesCount = clusterHeights.length - 1;
     }
     // So: height of one cluster
-    const clusterHeight = depthsArray[seriesCount - 1];
+    const clusterHeight = clusterHeights[seriesCount - 1];
     // ...and height of all bars together
     let innerBoxHeight = clusterHeight * pointCount;
-    // Adjust for overlapping
-    // (I've lifted this straight from my old Excel code. Frankly,
-    // I don't understand it any more...)
+    // NOTE: this is adapted from my old Excel code, which also allowed for
+    // overlapping bars. However, we've never used them, so go with a flag:
+    // isStacked (false = bars side by side).
+    // Code just below, comm'd out, is close to the Excel original. Left
+    // here for possible reference...
     // Firefox doesn't like 'includes', so:
+    /*
     if (chartStyle.search('overlap') >= 0) {
       innerBoxHeight -= clusterHeight;
       innerBoxHeight -= ((clusterHeight / 2) * (seriesCount - 1));
     }
-    // Now allow for gaps, and return...
+    */
+    // OK: back on track after that diversion. Now allow for gaps, and return...
     // innerBoxHeight += (gapHeight * (pointCount - 1));
     // NOTE: previous line assumed no outer padding. But I'm currently
     // going with outerpadding = innerpadding/2... So:
@@ -408,7 +491,7 @@ export default class SilverEditor extends React.Component {
   getScaleMinMaxIncr(minVal, maxVal, stepNo) {
     const mmObj = {};
     // Array of "acceptable" increments
-    const plausibleIncrs = this.props.operations.plausibleIncrements;
+    const plausibleIncrs = EditorConfig.operations.plausibleIncrements;
     let min = 0;
     let max = 0;
     // Min can't exceed zero; max can't be less than zero
@@ -468,8 +551,12 @@ export default class SilverEditor extends React.Component {
     // CATCH COLUMN EVENT
     // Called from column-width dropdown to update width.
     catchColumnEvent(event) {
-      const str = event.target.value.toLowerCase();
-      const val = this.props.operations.widths[str];
+      const str = event.target.value;
+      console.log(str);
+      // NOTE: HARD-CODED TO PRINT. Needs sorting so that it gets
+      // the relevant node of the lookup file...
+      // NOTE: context string now passed in as prop from Sibyl. What ensues...?
+      const val = this.state.specificContext.general.widths[str];
       if (typeof val !== 'undefined') {
         const widthEl = this.editorForm.getEditor('root.dimensions.width');
         widthEl.setValue(val);

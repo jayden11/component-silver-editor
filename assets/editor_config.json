@@ -1,0 +1,60 @@
+{
+  "MAIN_NOTE_1": "The big question is: HOW DO I STRUCTURE THIS?",
+  "MAIN_NOTE_2": "I think this file defines only properties that the Editor needs in order to update the config object...",
+  "operations": {
+    "NOTES": "So far, just one property. Others would be to with how THE WIDGET ITSELF works...",
+    "plausibleIncrements": [ 0.25, 0.5, 1, 2, 3, 5, 10, 20, 25, 50, 100, 200, 500, 1000, 2000 ]
+  },
+  "global": {
+    "NOTES": "Anything...?"
+  },
+  "contexts": {
+    "NOTES": "A node for every context. Only PRINT and 'OTHER' so far...",
+    "print": {
+      "general": {
+        "NOTES": "Anything not style-specific...",
+        "ticks": 5,
+        "widths": {"Narrow": 160, "Medium": 330, "Wide": 510}
+      },
+      "style_specific" : {
+        "bars": {
+          "NOTES": "Array of depths for calculating chart size. After 4 series, doesn't change...",
+          "clusterHeights": [ 8, 14, 18, 20 ],
+          "gap": 5,
+        },
+        "columns": {
+          "gap": 5
+        },
+        "lines": {
+          "NOTES": "Things the EDITOR needs to know about line charts"
+        },
+        "scatters": {
+          "NOTES": "Things the EDITOR needs to know about scatter charts"
+        }
+      }
+    },
+    "other": {
+      "general": {
+        "NOTES": "Anything not style-specific...",
+        "ticks": 5,
+        "widths": {"Small": 100, "Big": 200}
+      },
+      "style_specific" : {
+        "bars": {
+          "NOTES": "Array of depths for calculating chart size. After 4 series, doesn't change...",
+          "clusterHeights": [ 8, 14, 18, 20 ],
+          "gap": 5,
+        },
+        "columns": {
+          "gap": 5
+        },
+        "lines": {
+          "NOTES": "Things the EDITOR needs to know about line charts"
+        },
+        "scatters": {
+          "NOTES": "Things the EDITOR needs to know about scatter charts"
+        }
+      }
+    }
+  }
+}
