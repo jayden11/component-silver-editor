@@ -27,7 +27,9 @@ export default class SilverEditor extends React.Component {
 
   // DEFAULT PROPS
   static get defaultProps() {
-    return {};
+    return {
+      contextString: ConfigObject.context,
+    };
   }
 
   // CONSTRUCTOR
@@ -57,13 +59,10 @@ export default class SilverEditor extends React.Component {
     this.editorForm = new JSONEditor(document.getElementById('json-editor'), this.schemaObj);
     // Remove the root 'Collapse' button:
     this.editorForm.getEditor('root').toggle_button.remove();
-    // NOTE: At present I set up column width dropdown items in 2 places,
-    // the schema and the operations lookup. Can I combine them -- ideally,
-    // refer only to operations...?
-    this.setDynamicSchemaVals();
     // Intercept tabs in raw data text area, to prevent default focus-shift...
     const textarea = document.querySelectorAll('.form-control textarea')[0];
     textarea.onkeydown = this.catchTabEvent.bind(this);
+    textarea.onpaste = this.catchTextAreaPasteEvent.bind(this);
     // Intercept column-count change:
     const columnDropDown = document.querySelectorAll('.form-control select')[0];
     columnDropDown.onchange = this.catchColumnEvent.bind(this);
@@ -88,9 +87,17 @@ export default class SilverEditor extends React.Component {
         console.log('Invalid data: check form for details...');
       }
     });
+    // Explicitly update editorForm from the default schema...
+    // NOTE: At present I set up column width dropdown items in 2 places,
+    // the schema and the operations lookup. Can I combine them -- ideally,
+    // refer only to operations...?
+    this.setDynamicSchemaVals();
   }
   // COMPONENT DID MOUNT ends
 
+  // COMPONENT WILL RECEIVE PROPS
+  // Now redundant, since contextString no longer arrives as a prop from Sibyl
+  /*
   componentWillReceiveProps(newProps) {
     const newStr = newProps.contextString;
     const oldStr = this.props.contextString;
@@ -98,22 +105,32 @@ export default class SilverEditor extends React.Component {
       const specificContext = EditorConfig.contexts[newStr];
       // NOTE: hard-coding to bars here
       const specificStyle = specificContext.style_specific.bars;
-      console.log('Changing state...');
       this.state = { specificContext, specificStyle };
       this.setDynamicSchemaVals();
     }
   }
+  */
 
   // SET DYNAMIC SCHEMA VALUES
-  // Currently called from componentDidMount only, but may (will?)
-  // be called from other functions. Sets dynamic values in the schema
+  // Currently called from:
+  //    componentDidMount after initial render
+  //    componentWillReceiveProps, when user selects new context on tabs
+  //    catchTextAreaPasteEvent, when user pastes new data into the textarea
+  // Sets dynamic values in the schema
   // NOTE: currently assumes that properties are available in state...
   setDynamicSchemaVals() {
     // Widths:
     const widthSource = this.state.specificContext.general.widths;
     const wArray = Object.keys(widthSource);
     if (typeof this.editorForm !== 'undefined') {
-      // Let's do this the hard way, by digging down to the innerHTML
+      // Strings: title, subtitle, source, footnote
+      const eSource = EditorSchema.properties.strings.properties;
+      this.editorForm.getEditor('root.strings.title').setValue(eSource.title.default);
+      this.editorForm.getEditor('root.strings.subtitle').setValue(eSource.subtitle.default);
+      this.editorForm.getEditor('root.strings.source').setValue(eSource.source.default);
+      this.editorForm.getEditor('root.strings.footnote').setValue(eSource.footnote.default);
+      // Columns dropdown:
+      // I think we have to do this the hard way, by digging down to the innerHTML
       // Assemble the string:
       // "<option value="One">One</option><option value="Two">Two</option>"
       let ddStr = '';
@@ -242,6 +259,8 @@ export default class SilverEditor extends React.Component {
     // hard-set context to 'print'...
     config.context = 'print';
     this.props.passUpdatedConfig(config);
+    // NOTE: testing here...
+    this.editorForm.schema = this.schemaObj;
   }
   // PASS CONFIG TO SIBYL ends
 
@@ -527,32 +546,47 @@ export default class SilverEditor extends React.Component {
   }
   // MIN MAX OBJECT ends
 
-    // CATCH TAB EVENT
-    // Called from render > textarea > keydown event to
-    // pre-empt default tab-switches-focus and put a tab in data field
-    catchTabEvent(event) {
-      if (event.keyCode === 9) {
-        // prevent the focus loss
-        event.preventDefault();
-        const target = event.target;
-        const start = target.selectionStart;
-        const end = target.selectionEnd;
-        const value = target.value;
-        const textBefore = value.substring(0, start);
-        const textAfter = value.substring(end);
-        // set textarea value to: text before cursor + tab + text after cursor
-        target.value = `${textBefore}\t${textAfter}`;
-        // put cursor at right position again (add one for the tab)
-        target.selectionStart = target.selectionEnd = start + 1;
-      }
+  // CATCH CONTEXT CLICK
+  catchContextClick(event) {
+    const contextString = event.target.innerText.toLowerCase();
+    // Get context node from lookup
+    const specificContext = EditorConfig.contexts[contextString];
+    // NOTE: hard-coding to bars here
+    const specificStyle = specificContext.style_specific.bars;
+    this.state = { specificContext, specificStyle };
+    this.setDynamicSchemaVals();
+  }
+  // CATCH CONTEXT CLICK ends
+
+  // CATCH TAB EVENT
+  // Called from render > textarea > keydown event to
+  // pre-empt default tab-switches-focus and put a tab in data field
+  catchTabEvent(event) {
+    if (event.keyCode === 9) {
+      // prevent the focus loss
+      event.preventDefault();
+      const target = event.target;
+      const start = target.selectionStart;
+      const end = target.selectionEnd;
+      const value = target.value;
+      const textBefore = value.substring(0, start);
+      const textAfter = value.substring(end);
+      // set textarea value to: text before cursor + tab + text after cursor
+      target.value = `${textBefore}\t${textAfter}`;
+      // put cursor at right position again (add one for the tab)
+      target.selectionStart = target.selectionEnd = start + 1;
     }
-    // CATCH TAB EVENT ends
+  }
+  // CATCH TAB EVENT ends
+
+    catchTextAreaPasteEvent(event) {
+      this.setDynamicSchemaVals();
+    }
 
     // CATCH COLUMN EVENT
     // Called from column-width dropdown to update width.
     catchColumnEvent(event) {
       const str = event.target.value;
-      console.log(str);
       // NOTE: HARD-CODED TO PRINT. Needs sorting so that it gets
       // the relevant node of the lookup file...
       // NOTE: context string now passed in as prop from Sibyl. What ensues...?
@@ -572,12 +606,51 @@ export default class SilverEditor extends React.Component {
       heightEl.setValue(val);
     }
 
-  // RENDER is vestigial: just draw something for componentDidMount to target...
-  render() {
+  // GET EDITOR HEADER
+  // Called from render to assemble the context options tab bar
+  // NOTE: this is a temp fix to demonstrate the idea. Proper, dynamic fix --
+  // probably using Umbi's dropdown component -- to come later...
+  // NOTE too that I'm wrapping the tab bar in a 'header' div. This is
+  // in case I decide to add any other content...
+  getEditorHeader() {
     return (
-      <div id="editorcomponent-div">
-        <form id="json-editor"></form>
+      <div className="editor-header-wrapper">
+        <div className="chart-context-choices-div">
+          <div className="context-choice" onClick={this.catchContextClick.bind(this)}>Print</div>
+          <div className="context-choice" onClick={this.catchContextClick.bind(this)}>Other</div>
+        </div>
+      </div>
+    );
+  }
+  // GET EDITOR HEADER ends
+
+  // RENDER
+  // editor-component-wrapper has 3 sub-divs:
+  //    header
+  //    form outer wrapper, containing:
+  //        json editor
+  //    acknowledgement
+  // <div className="json-editor-acknowledgement">
+  // json-editor copyright (c) 2013 Jeremy Dorn: github.com/jdorn/json-editor
+  // </div>
+  render() {
+    console.log(this.props);
+    console.log(this.state);
+    // Tab bar at top of chart div, for context choices:
+    const editorHeaderStructure = this.getEditorHeader();
+    return (
+      <div className="silverbullet-editor-wrapper">
+        {editorHeaderStructure}
+        <div className="editor-form-outer-wrapper">
+          <div className="editor-form-inner-wrapper">
+            <form id="json-editor"></form>
+          </div>
+        </div>
       </div>
     );
   }
 }
+
+/*
+<div className="silverbullet-editor-wrapper" config={config}>
+*/

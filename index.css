@@ -1,33 +1,119 @@
+/* Wrapper for entire Editor occupies right half of available space...*/
+.silverbullet-editor-wrapper {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 50%;
+  height: 100%;
+  background-color: #fff;
+  /*position: relative;*/
+}
+
+/* Header occupies top 50px and sprawls left across chart component */
+.editor-header-wrapper {
+  position: absolute;
+  top:0;
+  right: 0;
+  width: 200%;
+  height: 30px;
+}
+
+/* Outer wrapper for form */
+.editor-form-outer-wrapper {
+  position: absolute;
+  top: 30px;
+  height: 80%;
+  width: 100%;
+  overflow: hidden;
+}
+/* Scrollable container for form */
+.editor-form-inner-wrapper {
+  /*position: absolute;*/
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+/* Acknowledgement at bottom of editor */
+.editor-form-inner-wrapper::after {
+  display: block;
+  content: 'json-editor copyright (c) 2013 Jeremy Dorn: github.com/jdorn/json-editor';
+  margin-top: 20px;
+  font-family: 'OfficinaSanITC-Book';
+  font-size: 10px;
+  text-align: center;
+  color: #777;
+}
+
+.silverbullet-editor-datafield {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  width: 200px;
+  height: 300px;
+  -moz-tab-size: 12;
+  -o-tab-size: 12;
+  tab-size: 12;
+}
+
+
+/* Context choice */
+
+.chart-context-choices-div {
+  position: absolute;
+  top: 0;
+  left: 2px;
+  width: 50%;
+  height: 30px;
+}
+.context-choice {
+  height:100%;
+  float:left;
+  width: 49%;
+  background-color: #ccc;
+  text-align: center;
+  line-height: 2em;
+  margin-right: 1%;
+}
+.context-choice:hover {
+  background-color: #888;
+}
+.context-choice:active {
+  color: #f00;
+}
+
+/* Editor form... */
+/* Main form header */
+#json-editor > div > h3 > span {
+  padding-left: 5px;
+}
+/* Form content */
 .form-control {
   font-family: 'OfficinaSanITC-Book' !important;
   font-size: 12px;
 }
-
 .form-control label {
   font-weight: normal;
   color: #555;
   margin-bottom: 0 !important;
   margin-top: 5px !important;
 }
-
 .form-control textarea {
   font-family: 'OfficinaSanITC-Book' !important;
   height: 120px !important;
   margin-top: 3px !important;
   tab-size: 30;
 }
-
 .form-control input {
   width: 95%;
   padding: 3px 0 0 0;
 }
-
 .form-control p {
   padding-top: 7px;
   font-style: normal !important;
   font-size: 14px !important;
 }
-
 .form-control p span {
   background-color: #444;
   border-color: #444;
@@ -36,12 +122,10 @@
   cursor: pointer;
   border: 3px solid #444;
 }
-
 .form-control p span:hover {
   background-color: #888;
   border-color: #888;
 }
-
 .form-control p span:active {
   color: red;
   /*background-color: green;*/

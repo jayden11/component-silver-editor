@@ -1,5 +1,6 @@
 {
   "__NOTES__": "This is now the default config object. SilverBullet no longer has one...",
+  "newChart": true,
   "context": "print",
   "style": "bars",
   "data": [
