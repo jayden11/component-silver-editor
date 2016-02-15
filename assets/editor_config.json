@@ -9,12 +9,11 @@
     "NOTES": "Anything...?"
   },
   "contexts": {
-    "NOTES": "A node for every context. Only PRINT and 'OTHER' so far...",
     "print": {
       "general": {
         "NOTES": "Anything not style-specific...",
         "ticks": 5,
-        "widths": {"Narrow": 160, "Medium": 330, "Wide": 510}
+        "widths": {"narrow": 160, "medium": 330, "wide": 510}
       },
       "style_specific" : {
         "bars": {
@@ -37,7 +36,7 @@
       "general": {
         "NOTES": "Anything not style-specific...",
         "ticks": 5,
-        "widths": {"Small": 100, "Big": 200}
+        "widths": {"default": 200}
       },
       "style_specific" : {
         "bars": {

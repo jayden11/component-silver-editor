@@ -129,7 +129,8 @@
   },
   "dependencies": {
     "json-editor": "^0.7.23",
-    "react": "^0.14.1"
+    "react": "^0.14.1",
+    "@economist/component-silver-tab-bar": "^1.0.0"
   },
   "devDependencies": {
     "@economist/component-devpack": "^3.4.3",

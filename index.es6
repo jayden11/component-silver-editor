@@ -1,5 +1,7 @@
 // * global document */
 import React from 'react';
+// Tab bar component:
+import SilverTabBar from '@economist/component-silver-tab-bar';
 // The json schema:
 import EditorSchema from './assets/editor_schema.json';
 // Properties necessary for user-interaction with the Editor
@@ -10,37 +12,28 @@ import ConfigObject from './assets/default_config_object.json';
 // NOTE: the EDITOR is still very provisional and will remain so until
 // I've sorted out all the structural issues and got all the options
 // into the FORM.
-// Latest update, 19.1.16 did:
-//    - lookup files restructured (see above)
-//    - current context/style node is in state... but is that right??
-// Do I want to re-render if I change values in the FORM...?
+// As of 10.2.16, we seem to be stateless. The only pseudo-globals are the
+// context, subcontext and style strings, with are properties of ConfigObject
 
 export default class SilverEditor extends React.Component {
 
   // PROP TYPES
   static get propTypes() {
     return {
+      // Callback to Sibyl
       passUpdatedConfig: React.PropTypes.func.isRequired,
-      contextString: React.PropTypes.string,
     };
   }
 
   // DEFAULT PROPS
   static get defaultProps() {
     return {
-      contextString: ConfigObject.context,
     };
   }
 
   // CONSTRUCTOR
-  // This is premature, I think. But set the context/style lookup object
-  // as state. Eventually, as user sets context and style on the Form,
-  // state will update...?
   constructor(props) {
     super(props);
-    const specificContext = EditorConfig.contexts[props.contextString];
-    const specificStyle = specificContext.style_specific.bars;
-    this.state = { specificContext, specificStyle };
   }
   // CONSTRUCTOR ends
 
@@ -56,6 +49,8 @@ export default class SilverEditor extends React.Component {
     this.schemaObj.disable_edit_json = true;
     this.schemaObj.disable_properties = true;
     // Initialise editor form:
+    // JSONEditor.defaults.options.theme = 'foundation5';
+    // JSONEditor.defaults.options.theme = 'bootstrap2';
     this.editorForm = new JSONEditor(document.getElementById('json-editor'), this.schemaObj);
     // Remove the root 'Collapse' button:
     this.editorForm.getEditor('root').toggle_button.remove();
@@ -63,9 +58,10 @@ export default class SilverEditor extends React.Component {
     const textarea = document.querySelectorAll('.form-control textarea')[0];
     textarea.onkeydown = this.catchTabEvent.bind(this);
     textarea.onpaste = this.catchTextAreaPasteEvent.bind(this);
+
     // Intercept column-count change:
-    const columnDropDown = document.querySelectorAll('.form-control select')[0];
-    columnDropDown.onchange = this.catchColumnEvent.bind(this);
+    // const columnDropDown = document.querySelectorAll('.form-control select')[0];
+    // columnDropDown.onchange = this.catchColumnEvent.bind(this);
     // When editorForm changes, check and dispatch the config obj to Sibyl
     // (N.B.: changing dropdown selection doesnt't register as an event; it's only
     // when a field changes consequently that 'change' is tripped...)
@@ -95,33 +91,20 @@ export default class SilverEditor extends React.Component {
   }
   // COMPONENT DID MOUNT ends
 
-  // COMPONENT WILL RECEIVE PROPS
-  // Now redundant, since contextString no longer arrives as a prop from Sibyl
-  /*
-  componentWillReceiveProps(newProps) {
-    const newStr = newProps.contextString;
-    const oldStr = this.props.contextString;
-    if (newStr !== oldStr) {
-      const specificContext = EditorConfig.contexts[newStr];
-      // NOTE: hard-coding to bars here
-      const specificStyle = specificContext.style_specific.bars;
-      this.state = { specificContext, specificStyle };
-      this.setDynamicSchemaVals();
-    }
-  }
-  */
-
   // SET DYNAMIC SCHEMA VALUES
   // Currently called from:
   //    componentDidMount after initial render
-  //    componentWillReceiveProps, when user selects new context on tabs
+  //    *******, when user selects new context on tabs
   //    catchTextAreaPasteEvent, when user pastes new data into the textarea
   // Sets dynamic values in the schema
   // NOTE: currently assumes that properties are available in state...
   setDynamicSchemaVals() {
-    // Widths:
-    const widthSource = this.state.specificContext.general.widths;
-    const wArray = Object.keys(widthSource);
+    // Current context and widths array:
+    const context = ConfigObject.context;
+    const subContext = ConfigObject.subcontext;
+    const contextNode = EditorConfig.contexts[context];
+    const widthsArray = contextNode.general.widths;
+    // NOTE: I don't think we need this any more:
     if (typeof this.editorForm !== 'undefined') {
       // Strings: title, subtitle, source, footnote
       const eSource = EditorSchema.properties.strings.properties;
@@ -129,26 +112,12 @@ export default class SilverEditor extends React.Component {
       this.editorForm.getEditor('root.strings.subtitle').setValue(eSource.subtitle.default);
       this.editorForm.getEditor('root.strings.source').setValue(eSource.source.default);
       this.editorForm.getEditor('root.strings.footnote').setValue(eSource.footnote.default);
-      // Columns dropdown:
-      // I think we have to do this the hard way, by digging down to the innerHTML
-      // Assemble the string:
-      // "<option value="One">One</option><option value="Two">Two</option>"
-      let ddStr = '';
-      for (let i = 0; i < wArray.length; i++) {
-        const str = wArray[i];
-        ddStr += `<option value="${str}">${str}</option>`;
-      }
-      const ddEl = this.editorForm.getEditor('root.dimensions.columns').control.children[1];
-      ddEl.innerHTML = ddStr;
-      // By default, re-populated dropdown displays first item string
-      // Reset the width field with matching value
-      // (Editor registers this as change event and fires off updated config to Sibyl...)
-      const val = this.state.specificContext.general.widths[wArray[0]];
+      // Width
+      const val = widthsArray[subContext];
       this.editorForm.getEditor('root.dimensions.width').setValue(val);
     } else {
       // NOTE: this should never run, but keep a check on it for now...
       console.log('I should not be hitting this point in Editor.setDynamicSchemaVals...');
-      // this.schemaObj.schema.properties.dimensions.properties.columns.enum = wArray;
     }
   }
   // SET DYNAMIC SCHEMA VALUES ends
@@ -196,12 +165,17 @@ export default class SilverEditor extends React.Component {
     // ...which is invalid by default
     const config = { isValid: false };
     // NOTE: for now, hard-code in context and style properties:
-    const context = this.props.contextString;
+    const context = ConfigObject.context;
+    const subContext = ConfigObject.subcontext;
+    const style = ConfigObject.style;
     config.context = context;
-    const style = 'bars';
+    config.subContext = subContext;
     config.style = style;
+    // Context and style nodes:
+    const contextNode = EditorConfig.contexts[context];
+    const styleNode = contextNode.style_specific[style];
     // Get gap from specific config node and pass it down...
-    config.gap = this.state.specificStyle.gap;
+    config.gap = styleNode.gap;
     // Find out what we can from the data
     // (data, headers, min/max/incr, point/seriesCount, longestCatString)
     const dataObj = this.unpickTsv(editorVals.data);
@@ -217,7 +191,7 @@ export default class SilverEditor extends React.Component {
     // NOTE: HARD-WIRED TO SINGLE-SCALE AT PRESENT.
     // *** Will need to work with 2 scales on scatter charts, eventually...
     // AND PROBABLY IN THE WRONG PLACE -- MOVES DOWN TO ChartWrapper, or something...
-    const ticks = this.state.specificContext.general.ticks;
+    const ticks = contextNode.general.ticks;
     const mmiObj = this.getScaleMinMaxIncr(dataObj.minVal, dataObj.maxVal, ticks);
     // NOTE: and the hard-wiring to 'print' is problematic
     // Unpick:
@@ -250,13 +224,16 @@ export default class SilverEditor extends React.Component {
     config.isValid = true;
     return config;
   }
-  // RETURN CONFIG ends
+  // UNPICK CONFIG ends
 
   // PASS CONFIG TO SIBYL
   // Simply lobs the config object back up the tree
   passConfigToSibyl(config) {
     // NOTE: Since there's no 'other' component,
-    // hard-set context to 'print'...
+    // hard-set context to 'print'... This hard-coding
+    // has no structural implications and can be deleted
+    // as soon as we have other contexts in play...
+    console.log(config);
     config.context = 'print';
     this.props.passUpdatedConfig(config);
     // NOTE: testing here...
@@ -268,11 +245,12 @@ export default class SilverEditor extends React.Component {
   // Some styles -- well, bar charts, anyway -- force the chart height
   // Param is the validated config object
   getBarChartHeight(config) {
-    // NOTE: hard-coded to print for now. But context and style are already
-    // hard-coded into unpickConfig; and I eventually want to:
-    //    - move defaults into the schema (when there's options to play with)
-    //    - fetch it from there (or from the config obj?)
-    const context = this.props.contextString;
+    const context = ConfigObject.context;
+    // NOTE: currently, Editor doesn't care about sub-context...
+    // const subContext = ConfigObject.subcontext;
+    const style = ConfigObject.style;
+    const contextNode = EditorConfig.contexts[context];
+    const styleNode = contextNode.style_specific[style];
     // Stacked?
     // NOTE: hard-coded for now...
     const isStacked = false;
@@ -288,9 +266,8 @@ export default class SilverEditor extends React.Component {
     }
     // Array of cluster-heights to use if bars are side-by-side,
     // up to a max of four series (squeeze after that). And gap height.
-    // NOTE: more hard-coding...
-    const clusterHeights = this.state.specificStyle.clusterHeights;
-    const gapHeight = this.state.specificStyle.gap;
+    const clusterHeights = styleNode.clusterHeights;
+    const gapHeight = styleNode.gap;
     if (seriesCount > clusterHeights.length) {
       seriesCount = clusterHeights.length - 1;
     }
@@ -546,18 +523,6 @@ export default class SilverEditor extends React.Component {
   }
   // MIN MAX OBJECT ends
 
-  // CATCH CONTEXT CLICK
-  catchContextClick(event) {
-    const contextString = event.target.innerText.toLowerCase();
-    // Get context node from lookup
-    const specificContext = EditorConfig.contexts[contextString];
-    // NOTE: hard-coding to bars here
-    const specificStyle = specificContext.style_specific.bars;
-    this.state = { specificContext, specificStyle };
-    this.setDynamicSchemaVals();
-  }
-  // CATCH CONTEXT CLICK ends
-
   // CATCH TAB EVENT
   // Called from render > textarea > keydown event to
   // pre-empt default tab-switches-focus and put a tab in data field
@@ -579,78 +544,107 @@ export default class SilverEditor extends React.Component {
   }
   // CATCH TAB EVENT ends
 
-    catchTextAreaPasteEvent(event) {
-      this.setDynamicSchemaVals();
+  // CATCH TEXT AREA PASTE EVENT
+  // Listener for paste into data textarea
+  catchTextAreaPasteEvent() {
+    console.log('stop');
+    this.setDynamicSchemaVals();
+  }
+  // CATCH TEXT AREA PASTE EVENT ends
+
+  // CATCH BAR SPAN EVENT
+  // Listener to the 'recommended height' button
+  catchBarSpanEvent(event) {
+    // Get the value from the span...
+    const val = parseFloat(event.target.textContent, 10);
+    // ...and send to the input:
+    const heightEl = this.editorForm.getEditor('root.dimensions.height');
+    heightEl.setValue(val);
+  }
+  // CATCH BAR SPAN EVENT ends
+
+  // FIELD CONTEXT FROM TAB BAR
+  // Callback sent to the TabBar. Param is an object
+  // with 2 props: parent (string)...
+  // ...and children (array, possible empty, and currently redundant)
+  fieldContextFromTabBar(obj) {
+    // Reset reference object:
+    ConfigObject.context = obj.parent;
+    ConfigObject.subcontext = obj.child;
+    this.setDynamicSchemaVals();
+  }
+  // FIELD CONTEXT FROM TAB BAR ends
+
+    // UNPICK CONTEXTS
+    // Called from getTabBarJSX to assemble the context definitions to pass
+    // down to the TabBar component
+    unpickContexts() {
+      // Get default context:
+      const defaultContext = ConfigObject.context;
+      const contexts = EditorConfig.contexts;
+      const result = [];
+      Object.keys(contexts).forEach((key) => {
+        const obj = contexts[key].general;
+        const tempObj = { parent: key };
+        const children = [];
+        Object.keys(obj.widths).forEach((width) => {
+          children.push(width);
+        });
+        tempObj.children = children;
+        // Flag for default hightlight on tab bar
+        tempObj.default = (key === defaultContext);
+        result.push(tempObj);
+      });
+      return result;
+    }
+    // UNPICK CONTEXTS ends
+
+    catchResetClick() {
+      console.log("Reset...");
+      // Empty text area
+      // Set strings back to default
+      // Set width and height back to default...
     }
 
-    // CATCH COLUMN EVENT
-    // Called from column-width dropdown to update width.
-    catchColumnEvent(event) {
-      const str = event.target.value;
-      // NOTE: HARD-CODED TO PRINT. Needs sorting so that it gets
-      // the relevant node of the lookup file...
-      // NOTE: context string now passed in as prop from Sibyl. What ensues...?
-      const val = this.state.specificContext.general.widths[str];
-      if (typeof val !== 'undefined') {
-        const widthEl = this.editorForm.getEditor('root.dimensions.width');
-        widthEl.setValue(val);
-      }
-    }
-    // CATCH COLUMN EVENT ends
-
-    catchBarSpanEvent(event) {
-      // Get the value from the span...
-      const val = parseFloat(event.target.textContent, 10);
-      // ...and send to the input:
-      const heightEl = this.editorForm.getEditor('root.dimensions.height');
-      heightEl.setValue(val);
-    }
-
-  // GET EDITOR HEADER
+  // GET TAB BAR JSX
   // Called from render to assemble the context options tab bar
-  // NOTE: this is a temp fix to demonstrate the idea. Proper, dynamic fix --
-  // probably using Umbi's dropdown component -- to come later...
-  // NOTE too that I'm wrapping the tab bar in a 'header' div. This is
+  // NOTE: I'm wrapping the tab bar in a 'header' div. This is
   // in case I decide to add any other content...
-  getEditorHeader() {
+  getTabBarJSX() {
+    const unpickedContexts = this.unpickContexts();
     return (
       <div className="editor-header-wrapper">
-        <div className="chart-context-choices-div">
-          <div className="context-choice" onClick={this.catchContextClick.bind(this)}>Print</div>
-          <div className="context-choice" onClick={this.catchContextClick.bind(this)}>Other</div>
+         <div className="chart-context-choices-div">
+          <SilverTabBar
+            tabBarDefinitions={unpickedContexts}
+            passContextToEditor={this.fieldContextFromTabBar.bind(this)}
+          />
         </div>
-      </div>
-    );
-  }
-  // GET EDITOR HEADER ends
-
-  // RENDER
-  // editor-component-wrapper has 3 sub-divs:
-  //    header
-  //    form outer wrapper, containing:
-  //        json editor
-  //    acknowledgement
-  // <div className="json-editor-acknowledgement">
-  // json-editor copyright (c) 2013 Jeremy Dorn: github.com/jdorn/json-editor
-  // </div>
-  render() {
-    console.log(this.props);
-    console.log(this.state);
-    // Tab bar at top of chart div, for context choices:
-    const editorHeaderStructure = this.getEditorHeader();
-    return (
-      <div className="silverbullet-editor-wrapper">
-        {editorHeaderStructure}
-        <div className="editor-form-outer-wrapper">
-          <div className="editor-form-inner-wrapper">
-            <form id="json-editor"></form>
+        <div className="chart-reset-wrapper">
+          <div className="silverbullet-reset-button" id="silverbullet-reset-button">
+            <p onClick={this.catchResetClick.bind(this)}>Reset</p>
           </div>
         </div>
       </div>
     );
   }
-}
+  // GET TAB BAR JSX ends
 
-/*
-<div className="silverbullet-editor-wrapper" config={config}>
-*/
+  // RENDER
+  // editorHeaderStructure is currently the context tab bar
+  // remainder is the json-editor form
+  render() {
+    // Tab bar (dependent component) at top of chart div, for context choices:
+    const tabBarJSX = this.getTabBarJSX();
+    return (
+      <div className="silverbullet-editor-wrapper">
+        <div className="editor-form-outer-wrapper">
+          <div className="editor-form-inner-wrapper">
+            <form id="json-editor"></form>
+          </div>
+        </div>
+        {tabBarJSX}
+      </div>
+    );
+  }
+}

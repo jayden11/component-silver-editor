@@ -1,3 +1,4 @@
+@import '@economist/component-silver-tab-bar';
 /* Wrapper for entire Editor occupies right half of available space...*/
 .silverbullet-editor-wrapper {
   position: absolute;
@@ -9,7 +10,7 @@
   /*position: relative;*/
 }
 
-/* Header occupies top 50px and sprawls left across chart component */
+/* Header occupies top 30px and sprawls left across chart component */
 .editor-header-wrapper {
   position: absolute;
   top:0;
@@ -21,9 +22,10 @@
 /* Outer wrapper for form */
 .editor-form-outer-wrapper {
   position: absolute;
-  top: 30px;
-  height: 80%;
-  width: 100%;
+  top: -10px;
+  height: 95%;
+  width: 95%;
+  margin-left: 3%;
   overflow: hidden;
 }
 /* Scrollable container for form */
@@ -46,27 +48,25 @@
   color: #777;
 }
 
-.silverbullet-editor-datafield {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  width: 200px;
-  height: 300px;
-  -moz-tab-size: 12;
-  -o-tab-size: 12;
-  tab-size: 12;
-}
-
-
-/* Context choice */
-
+/* Context choices wrapper: left half of Editor header */
 .chart-context-choices-div {
   position: absolute;
   top: 0;
   left: 2px;
-  width: 50%;
-  height: 30px;
+  width: 49%;
+  height: 100%;
 }
+/* Reset button wrapper: right half of Editor header */
+.chart-reset-wrapper {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 50%;
+  height: 100%;
+}
+
+
+/*
 .context-choice {
   height:100%;
   float:left;
@@ -82,12 +82,13 @@
 .context-choice:active {
   color: #f00;
 }
+*/
 
 /* Editor form... */
 /* Main form header */
-#json-editor > div > h3 > span {
+/*#json-editor > div > h3 > span {
   padding-left: 5px;
-}
+}*/
 /* Form content */
 .form-control {
   font-family: 'OfficinaSanITC-Book' !important;
@@ -128,6 +129,43 @@
 }
 .form-control p span:active {
   color: red;
-  /*background-color: green;*/
-  /*border-color: green;*/
 }
+
+.silverbullet-reset-button {
+  margin: 0;
+  top: 5px;
+  height: 100%;
+  width: 100px;
+  position: absolute;
+  right: 12px;
+  background-color: #444;
+  color: white;
+  cursor: pointer;
+}
+.silverbullet-reset-button p {
+  text-align: center;
+  line-height: 0.2em;
+}
+.silverbullet-reset-button:hover {
+  background-color: #888;
+}
+.silverbullet-reset-button:active {
+  color: #f00;
+}
+
+/*
+.silverbullet-reset-button {
+  position: relative;
+  right: 10px;
+  -webkit-transform: translateX(-50%);
+  -ms-transform: translateX(-50%);
+  -moz-transform: translateX(-50%);
+  -o-transform: translateX(-50%);
+  transform: translateX(-50%);
+}
+.silverbullet-reset-button:hover {
+  background-color: #888;
+}
+.silverbullet-reset-button:active {
+  color: #f00;
+}*/

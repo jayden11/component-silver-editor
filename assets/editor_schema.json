@@ -14,7 +14,7 @@
     "strings": {
       "type": "object",
       "options": {
-        "collapsed": false
+        "collapsed": true
       },
       "title": "Strings",
       "properties": {
@@ -44,22 +44,16 @@
       }
     },
     "dimensions": {
+      "title": "Chart size",
       "type": "object",
-      "id": "dimensions",
       "options": {
         "collapsed": false
       },
-      "title": "Chart size",
       "properties": {
         "width": {
           "type": "integer",
           "default": 160,
           "title": "Width (pts/px)"
-        },
-        "columns": {
-          "type": "string",
-          "enum": [],
-          "title": "Columns"
         },
         "height": {
           "type": "integer",

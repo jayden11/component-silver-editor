@@ -1,13 +1,17 @@
 {
-  "__NOTES__": "This is now the default config object. SilverBullet no longer has one...",
+  "__NOTES1__": "This is now the default config object. SilverBullet no longer has one...",
+  "__NOTES2__": "But actually this looks increasingly like a sort of pseudo-global with some defaults...",
+  "__NOTES3__": "So at some point, start killing nodes and see where that leaves us...",
   "newChart": true,
   "context": "print",
+  "subcontext": "narrow",
   "style": "bars",
   "data": [
     { "category": "Two", "value": 2 },
     { "category": "Four", "value": 4 }
   ],
   "strings": {
+    "__NOTE__": "Now redundant: strings come from schema lookup file",
     "title": { "content": "Title to come, title to come, title to come, title to come" },
     "subtitle": { "content": "Subtitle to come with additional text to force us to wrap" },
     "source": { "content": "Source: to come with additional text to force wrap" },
