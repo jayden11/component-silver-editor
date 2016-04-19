@@ -8,6 +8,8 @@ import EditorSchema from './assets/editor_schema.json';
 import EditorConfig from './assets/editor_config.json';
 // The default config object, to be 'sharpened up' and passing down the tree...
 import ConfigObject from './assets/default_config_object.json';
+// Utilities module
+import * as EditorUtilities from './editorutilities';
 
 // NOTE: the EDITOR is still very provisional and will remain so until
 // I've sorted out all the structural issues and got all the options
@@ -39,6 +41,7 @@ export default class SilverEditor extends React.Component {
 
   // COMPONENT DID MOUNT
   componentDidMount() {
+    console.log(EditorUtilities.sayHi());
     /* eslint-disable id-match */
     /* eslint-disable no-undef */
     /* eslint-disable no-console */
@@ -72,8 +75,13 @@ export default class SilverEditor extends React.Component {
         // Check the config object's 'isValid' flag:
         if (unpickedConfig.isValid) {
           // Data has passed both validity checks.
+          // Update the config object with 'ideal' inner box height
           // Display recommended height (if bar chart):
-          this.showBarHeightRecommendation(unpickedConfig);
+          // unpickedConfig.dimensions.innerbox.recommendedHeight = this.getChartInnerboxHeight(unpickedConfig);
+
+          // Replaces (just a rename, but now returns a values):
+          // this.showBarHeightRecommendation(unpickedConfig);
+          console.log(unpickedConfig);
           // And pass the config object back to SilverBullet:
           this.passConfigToSibyl(unpickedConfig);
         } else {
@@ -122,23 +130,31 @@ export default class SilverEditor extends React.Component {
   }
   // SET DYNAMIC SCHEMA VALUES ends
 
-  // SHOW BAR HEIGHT RECOMMENDATION
-  // Called from componentDidMount. Passed the validated config object,
-  // if this is a bar chart, calculates and displays the recommended
-  // height based on number of bars...
+  // GET BAR CHART INNER-BOX HEIGHT
+  // Called from componentDidMount; param is the validated config object.
+  // (A) If this is a bar chart, calls getBarChartHeight to calculate innerbox height
+  // and consequent overall chart height, which it displays as the recommended chart outer
+  // height (based on number of bars)...
   // NOTE: I'll have to catch stacked and overlapping bars eventually...
-  showBarHeightRecommendation(config) {
+  // (B) For other styles, it would *probably* (remains to be decided) just derive
+  // innerbox height from overall height...
+  // In either case, returns innerbox height
+  getChartInnerboxHeight(config) {
     // NOTE: chart style hard-coded here for now. Eventually get style from editorForm...
     const style = 'bars';
     const hDescrip = this.editorForm.getEditor('root.dimensions.height').description;
     if (style === 'bars') {
-      hDescrip.innerHTML = `Recommended height: <span>${this.getBarChartHeight(config)}pts</span>. Click to use...`;
+      const heightObj = this.getBarChartHeight(config);
+      hDescrip.innerHTML = `Recommended height: <span>${heightObj.outerHeight}pts</span>. Click to use...`;
       // Reset event on span:
       const barRecommendSpan = document.querySelectorAll('.form-control p span')[0];
       barRecommendSpan.onclick = this.catchBarSpanEvent.bind(this);
+      innerHeight = heightObj.innerHeight;
     } else {
       hDescrip.innerHTML = '';
+      // eventually return something...
     }
+    return innerHeight;
   }
     // SHOW BAR HEIGHT RECOMMENDATION
 
@@ -233,7 +249,7 @@ export default class SilverEditor extends React.Component {
     // hard-set context to 'print'... This hard-coding
     // has no structural implications and can be deleted
     // as soon as we have other contexts in play...
-    console.log(config);
+    // console.log(config);
     config.context = 'print';
     this.props.passUpdatedConfig(config);
     // NOTE: testing here...
@@ -294,8 +310,13 @@ export default class SilverEditor extends React.Component {
     innerBoxHeight += (gapHeight * (pointCount));
     // Add top and bottom margins, round up to nearest 5, and return:
     const returnedHeight = innerBoxHeight + margins.top + margins.bottom;
-    return Math.ceil(returnedHeight / 5) * 5;
+    // Return an object with inner and outer heights...
+    return {
+      innerHeight: innerBoxHeight,
+      outerHeight: Math.ceil(returnedHeight / 5) * 5,
+    };
   }
+  // .innerHeight and .outerHeight
   // GET BAR CHART HEIGHT ends
 
   // ====================================
@@ -547,7 +568,7 @@ export default class SilverEditor extends React.Component {
   // CATCH TEXT AREA PASTE EVENT
   // Listener for paste into data textarea
   catchTextAreaPasteEvent() {
-    console.log('stop');
+    console.log('Running text area paste-in listener, although I cannot remember what it is supposed to do...');
     this.setDynamicSchemaVals();
   }
   // CATCH TEXT AREA PASTE EVENT ends
@@ -600,7 +621,6 @@ export default class SilverEditor extends React.Component {
     // UNPICK CONTEXTS ends
 
     catchResetClick() {
-      console.log("Reset...");
       // Empty text area
       // Set strings back to default
       // Set width and height back to default...

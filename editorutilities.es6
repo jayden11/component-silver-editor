@@ -7,9 +7,15 @@
 
 */
 
+export function sayHi() {
+  return 'Hi!!';
+}
+
+
 // MIN MAX OBJECT
 // Passed 3 args: actual min val; actual max val; ideal number of increment-steps
 // Returns obj with 4 properties: min, max, increment and an updated step-count
+/*
 getScaleMinMaxIncr(minVal, maxVal, stepNo) {
   const mmObj = {};
   // Array of "acceptable" increments
@@ -47,10 +53,12 @@ getScaleMinMaxIncr(minVal, maxVal, stepNo) {
   mmObj.ticks = ticks;
   return mmObj;
 }
+*/
 // MIN MAX OBJECT ends
 
 // UNPICK CONFIG
 // Reshape form values to suit SilverBullet, then pass back...
+/*
 unpickConfig(eForm) {
   // Get actual values:
   const editorVals = eForm.getValue();
@@ -112,4 +120,5 @@ unpickConfig(eForm) {
   config.isValid = true;
   return config;
 }
+*/
 // UNPICK CONFIG ends
