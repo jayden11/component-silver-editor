@@ -41,6 +41,7 @@ export default class SilverEditor extends React.Component {
 
   // COMPONENT DID MOUNT
   componentDidMount() {
+    // Just a test of an external module:
     console.log(EditorUtilities.sayHi());
     /* eslint-disable id-match */
     /* eslint-disable no-undef */

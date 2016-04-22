@@ -1,0 +1,102 @@
+{
+  "SECTION-1": "DEFAULT PROPERTIES",
+  "default": {
+
+    "DEFAULT-BACKGROUND":"Properties for outerbox, background shapes and strings, and panels",
+    "background": {
+      "outerbox": {
+        "dimensions": {
+          "width": "160px",
+          "height": "155px"
+        },
+        "margins": {}
+      },
+      "shapes": {},
+      "strings": {},
+      "panels": {},
+    },
+    "DEFAULT--BACKGROUND": "ENDS",
+
+    "DEFAULT-CHART":"Properties for chart axes and series",
+    "chart": {},
+    "DEFAULT--CHART": "ENDS",
+
+    "DEFAULT-LEGEND":"Properties for chart legend",
+    "legend": {},
+    "DEFAULT--LEGEND":"ENDS",
+
+    "DEFAULT-OTHER":"To come... or not...",
+    "other": {},
+  },
+  "SECTION--1": "DEFAULT PROPERTIES ENDS",
+
+  "SECTION-2": "CONTEXT-SPECIFIC PROPERTIES",
+  "context": {
+    "SECTION-2.1": "PRINT PROPERTIES",
+    "print": {
+      "sections": ["ld"],
+      "default-section": "br",
+      "PRINT-SECTION": "DEFAULT",
+      "default": {
+
+      },
+      "PRINT-SECTION": "LD",
+      "ld": {
+        "background": {
+          "shapes": {
+            "bb2": "This has an overwriting width and height"
+          }
+        }
+      }
+    },
+    "SECTION-2.2": "ESPRESSO PROPERTIES",
+    "espresso": {},
+    "SECTION-2.1": "WEB PROPERTIES",
+    "web": {},
+    "SECTION-2.1": "APP PROPERTIES",
+    "app": {}
+  },
+
+  "SECTION-3":"METADATA",
+  "metadata": {
+    "options": {
+      "context": {
+        "print": {
+          "display": "Print",
+          "subcontexts": [
+            {"display": "Narrow", "width": 160},
+            {"display": "Medium", "width": 320},
+            {"display": "Narrow", "width": 160},
+          ]
+        },
+        "espresso": {
+          "display": "Espresso",
+          "subcontexts": "",
+        },
+        "app": {
+          "display": "",
+          "subcontexts": "",
+        },
+        "web": {
+          "display": "",
+          "subcontexts": ""
+        }
+      },
+      "section": ["br", "fn", "ld"],
+      "style": ["bar", "column", "line", "pie"],
+    },
+    "default": {
+      "context": "print",
+      "subcontext": "narrow",
+      "section": "br",
+      "style": "bars",
+      "panels": {
+        "number": 1,
+        "of": 1,
+        "rows": 1
+      }
+    }
+  },
+  "SECTION--3":"METADATA ENDS",
+
+}
