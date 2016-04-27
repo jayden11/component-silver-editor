@@ -7,118 +7,81 @@
 
 */
 
-export function sayHi() {
-  return 'Hi!!';
+
+// GET FORM JSX
+// Called from render to assemble the editor form...
+export function getFormJSX() {
+  return (
+    <form id="json-editor">
+      <select className="editor-style-select" defaultValue="br"
+        onChange={this.catchStyleChange.bind(this)}
+      >
+        <option value="br">Britain</option>
+        <option value="fn">Finance</option>
+        <option value="ld">Leader</option>
+      </select>
+    </form>
+  );
 }
+// GET FORM JSX ends
 
+//
+// Below here is 'spare stuff' deleted from index.es6
 
-// MIN MAX OBJECT
-// Passed 3 args: actual min val; actual max val; ideal number of increment-steps
-// Returns obj with 4 properties: min, max, increment and an updated step-count
-/*
-getScaleMinMaxIncr(minVal, maxVal, stepNo) {
-  const mmObj = {};
-  // Array of "acceptable" increments
-  const plausibleIncrs = EditorConfig.operations.plausibleIncrements;
-  let min = 0;
-  let max = 0;
-  // Min can't exceed zero; max can't be less than zero
-  minVal = Math.min(0, minVal);
-  maxVal = Math.max(0, maxVal);
-  // Do (max-min) / steps to get a raw increment
-  let incr = (maxVal - minVal) / stepNo;
-  // Increment is presumably imperfect, so loop through
-  // the array of values, raising the increment
-  // to the next acceptable value
-  for (let i = 0; i < plausibleIncrs.length; i++) {
-    const plausVal = plausibleIncrs[i];
-    if (plausVal >= incr) {
-      incr = plausVal;
-      break;
+/* eslint-disable id-match */
+/* eslint-disable no-undef */
+/* eslint-disable no-console */
+/* eslint-disable camelcase */
+
+/* From componentDidMount
+this.schemaObj = {};
+this.schemaObj.schema = EditorSchema;
+// 2 options disable unwanted user access:
+this.schemaObj.disable_edit_json = true;
+this.schemaObj.disable_properties = true;
+// Initialise editor form:
+// JSONEditor.defaults.options.theme = 'foundation5';
+// JSONEditor.defaults.options.theme = 'bootstrap2';
+this.editorForm = new JSONEditor(document.getElementById('json-editor'), this.schemaObj);
+// Remove the root 'Collapse' button:
+this.editorForm.getEditor('root').toggle_button.remove();
+// Intercept tabs in raw data text area, to prevent default focus-shift...
+const textarea = document.querySelectorAll('.form-control textarea')[0];
+textarea.onkeydown = this.catchTabEvent.bind(this);
+textarea.onpaste = this.catchTextAreaPasteEvent.bind(this);
+
+// Intercept column-count change:
+// const columnDropDown = document.querySelectorAll('.form-control select')[0];
+// columnDropDown.onchange = this.catchColumnEvent.bind(this);
+// When editorForm changes, check and dispatch the config obj to Sibyl
+// (N.B.: changing dropdown selection doesnt't register as an event; it's only
+// when a field changes consequently that 'change' is tripped...)
+this.editorForm.on('change', () => {
+  if (this.validateForm(this.editorForm)) {
+    // Do the TSV-to-Json conversion and check the validity of the data
+    const unpickedConfig = this.unpickConfig(this.editorForm);
+    // Check the config object's 'isValid' flag:
+    if (unpickedConfig.isValid) {
+      // Data has passed both validity checks.
+      // Update the config object with 'ideal' inner box height
+      // Display recommended height (if bar chart):
+      // unpickedConfig.dimensions.innerbox.recommendedHeight = this.getChartInnerboxHeight(unpickedConfig);
+
+      // Replaces (just a rename, but now returns a values):
+      // this.showBarHeightRecommendation(unpickedConfig);
+      console.log(unpickedConfig);
+      // And pass the config object back to SilverBullet:
+      this.passConfigToSibyl(unpickedConfig);
+    } else {
+      console.log('Invalid data: details to be enumerated eventually...');
     }
+  } else {
+    console.log('Invalid data: check form for details...');
   }
-  // From zero, lower min to next acceptable value on or below inherited min
-  while (Math.floor(min) > Math.floor(minVal)) {
-    min -= incr;
-  }
-  // From zero, raise max to next acceptable value on or above inherited max
-  while (max < maxVal) {
-    max += incr;
-  }
-  // Revise number of ticks?
-  const ticks = (max - min) / incr;
-  mmObj.min = min;
-  mmObj.max = max;
-  mmObj.increment = incr;
-  mmObj.ticks = ticks;
-  return mmObj;
-}
+});
+// Explicitly update editorForm from the default schema...
+// NOTE: At present I set up column width dropdown items in 2 places,
+// the schema and the operations lookup. Can I combine them -- ideally,
+// refer only to operations...?
+this.setDynamicSchemaVals();
 */
-// MIN MAX OBJECT ends
-
-// UNPICK CONFIG
-// Reshape form values to suit SilverBullet, then pass back...
-/*
-unpickConfig(eForm) {
-  // Get actual values:
-  const editorVals = eForm.getValue();
-  // We plan to return a config object...
-  // ...which is invalid by default
-  const config = { isValid: false };
-  // NOTE: for now, hard-code in context and style properties:
-  const context = this.props.contextString;
-  config.context = context;
-  const style = 'bars';
-  config.style = style;
-  // Get gap from specific config node and pass it down...
-  config.gap = this.state.specificStyle.gap;
-  // Find out what we can from the data
-  // (data, headers, min/max/incr, point/seriesCount, longestCatString)
-  const dataObj = this.unpickTsv(editorVals.data);
-  // Check validity:
-  if (!dataObj.isValid) {
-    console.log(dataObj.validityMsg);
-    return config;
-  }
-  // So dataObj yields various properties that we need.
-  // Data:
-  config.data = dataObj.data;
-  // Min/max/increment:
-  // NOTE: HARD-WIRED TO SINGLE-SCALE AT PRESENT.
-  // *** Will need to work with 2 scales on scatter charts, eventually...
-  // AND PROBABLY IN THE WRONG PLACE -- MOVES DOWN TO ChartWrapper, or something...
-  const ticks = this.state.specificContext.general.ticks;
-  const mmiObj = this.getScaleMinMaxIncr(dataObj.minVal, dataObj.maxVal, ticks);
-  // NOTE: and the hard-wiring to 'print' is problematic
-  // Unpick:
-  config.minmax = mmiObj;
-  // Next comm'd out... I think because tick count is size-related...
-  // NOTE: but watch out, now we can tweak chart width...
-  // config.ticks = mmiObj.ticks;
-  // Do I have to force the chart height (eg bar chart)...?
-  // Get context-specific margins
-  // NOTE: messy here...?
-  config.pointCount = dataObj.pointCount;
-  config.seriesCount = dataObj.seriesCount;
-  config.longestCatString = dataObj.longestCatString;
-  // config strings:
-  const strKeys = Object.keys(editorVals.strings);
-  const strObj = {};
-  for (const iii in strKeys) {
-    const key = strKeys[iii];
-    strObj[key] = { content: editorVals.strings[key] };
-  }
-  config.strings = strObj;
-  // Width and height of outerbox:
-  const dimObj = { outerbox: {} };
-  dimObj.outerbox.width = editorVals.dimensions.width;
-  dimObj.outerbox.height = editorVals.dimensions.height;
-  config.dimensions = dimObj;
-  // Headers (for D3 colour mapping)
-  config.headers = dataObj.headers;
-  // Still here? Must (ha!) be OK...
-  config.isValid = true;
-  return config;
-}
-*/
-// UNPICK CONFIG ends

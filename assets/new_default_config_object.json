@@ -1,0 +1,24 @@
+{
+  "__NOTES1__": "Revised default config object.",
+  "__NOTES2__": "Defines only 1 actual property.",
+  "background": {
+    "outerbox": {},
+    "margins": {},
+    "shapes": {},
+    "strings": {
+      "title": {},
+      "subtitle": {},
+      "source": {},
+      "footnote": {}
+    },
+  },
+  "chart": {},
+  "data": [],
+  "metadata": {
+    "context": "",
+    "newchart": true,
+    "style": "",
+    "subcontext": ""
+  },
+  "other": {}
+}

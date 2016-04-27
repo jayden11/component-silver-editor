@@ -63,6 +63,7 @@
   left: 50%;
   width: 50%;
   height: 100%;
+  pointer-events: none;
 }
 
 
@@ -141,6 +142,7 @@
   background-color: #444;
   color: white;
   cursor: pointer;
+  pointer-events: all;
 }
 .silverbullet-reset-button p {
   text-align: center;
@@ -169,3 +171,15 @@
 .silverbullet-reset-button:active {
   color: #f00;
 }*/
+
+.editor-type-select {
+  position: absolute;
+  top: 100px;
+  left: 50px;
+}
+
+.editor-section-select {
+  position: absolute;
+  top: 100px;
+  left: 150px;
+}

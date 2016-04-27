@@ -2,7 +2,7 @@
   "SECTION-1": "DEFAULT PROPERTIES",
   "default": {
 
-    "DEFAULT-BACKGROUND":"Properties for outerbox, background shapes and strings, and panels",
+    "DEFAULT-BACKGROUND":"Default properties for outerbox, background shapes and strings, and panels",
     "background": {
       "outerbox": {
         "dimensions": {
@@ -28,17 +28,29 @@
     "DEFAULT-OTHER":"To come... or not...",
     "other": {},
   },
-  "SECTION--1": "DEFAULT PROPERTIES ENDS",
+  "SECTION--1": "DEFAULT PROPERTIES... ENDS",
 
   "SECTION-2": "CONTEXT-SPECIFIC PROPERTIES",
-  "context": {
+  "contexts": {
     "SECTION-2.1": "PRINT PROPERTIES",
     "print": {
-      "sections": ["ld"],
-      "default-section": "br",
-      "PRINT-SECTION": "DEFAULT",
+      "PRINT-EDITOR": "Properties that tell the Editor how to present print options",
+      "editor": {
+        "display": "Print",
+        "old_subcontexts": [
+          {"display": "Narrow", "width": 160},
+          {"display": "Medium", "width": 320},
+          {"display": "Wide", "width": 510},
+        ],
+        "subcontexts": {"narrow": 160, "medium": 330, "wide": 510}
+      },
+      "PRINT-DEFAULT": "Non-section-specific print properties (e.g. bb1 fill)",
       "default": {
-
+        "background": {
+          "shapes": {
+            "bb1": "This has an overwriting fill"
+          }
+        }
       },
       "PRINT-SECTION": "LD",
       "ld": {
@@ -50,46 +62,48 @@
       }
     },
     "SECTION-2.2": "ESPRESSO PROPERTIES",
-    "espresso": {},
+    "espresso": {
+      "editor": {
+        "display": "Espresso",
+        "subcontexts": {"default": 200}
+      }
+    },
     "SECTION-2.1": "WEB PROPERTIES",
-    "web": {},
+    "web": {
+      "editor": {
+        "display": "Espresso",
+        "subcontexts": {"default": 200}
+      }
+    },
     "SECTION-2.1": "APP PROPERTIES",
-    "app": {}
+    "app": {
+      "editor": {
+        "display": "Espresso",
+        "subcontexts": {"default": 200}
+      }
+    }
   },
+  "SECTION--2": "CONTEXT-SPECIFIC PROPERTIES... ENDS",
 
   "SECTION-3":"METADATA",
   "metadata": {
-    "options": {
-      "context": {
-        "print": {
-          "display": "Print",
-          "subcontexts": [
-            {"display": "Narrow", "width": 160},
-            {"display": "Medium", "width": 320},
-            {"display": "Narrow", "width": 160},
-          ]
-        },
-        "espresso": {
-          "display": "Espresso",
-          "subcontexts": "",
-        },
-        "app": {
-          "display": "",
-          "subcontexts": "",
-        },
-        "web": {
-          "display": "",
-          "subcontexts": ""
-        }
-      },
-      "section": ["br", "fn", "ld"],
-      "style": ["bar", "column", "line", "pie"],
-    },
-    "default": {
+    "sections": [
+      {"id": "br", "display": "Britain"},
+      {"id": "fn", "display": "Finance"},
+      {"id": "ld", "display": "Leader"},
+      {"id": "wb", "display": "Business"}
+    ],
+    "types": [
+      {"id": "bar", "display": "Bar"},
+      {"id": "stackedbar", "display": "Stacked Bar"},
+      {"id": "line", "display": "Line"},
+      {"id": "pie", "display": "Pie"}
+    ],
+    "defaults": {
       "context": "print",
       "subcontext": "narrow",
-      "section": "br",
-      "style": "bars",
+      "section": "fn",
+      "type": "bar",
       "panels": {
         "number": 1,
         "of": 1,
@@ -97,6 +111,12 @@
       }
     }
   },
-  "SECTION--3":"METADATA ENDS",
+  "SECTION--3":"METADATA... ENDS",
 
+  "SECTION-4":"STUFF THAT GOES SOMEWHERE ELSE",
+  "other": {
+    "panelMax": 4,
+    "plausibleIncrements": [ 0.25, 0.5, 1, 2, 3, 5, 10, 20, 25, 50, 100, 200, 500, 1000, 2000 ]
+  },
+  "SECTION--4":"STUFF THAT GOES SOMEWHERE ELSE... ENDS"
 }
