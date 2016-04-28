@@ -22,18 +22,31 @@ export default class SilverEditor extends React.Component {
     return {
       // Callback to Sibyl
       passUpdatedConfig: React.PropTypes.func.isRequired,
+      folds: React.PropTypes.object,
     };
   }
 
   // DEFAULT PROPS
   static get defaultProps() {
     return {
+      // NOTE: 'iden' must match specific fold selector in css
+      folds: {
+        data: { iden: 'data', display: 'Data', defaultText: 'Fold for data textarea',
+          valid: false, open: true },
+        layout: { iden: 'layout', display: 'Layout', defaultText: 'Chart type and section',
+          valid: false, open: false },
+        scales: { iden: 'scales', display: 'Scales', defaultText: 'Chart scales',
+          valid: false, open: false },
+      },
     };
   }
 
   // CONSTRUCTOR
   constructor(props) {
     super(props);
+    this.state = {
+      folds: props.folds,
+    };
   }
   // CONSTRUCTOR ends
 
@@ -592,7 +605,7 @@ export default class SilverEditor extends React.Component {
   // Called from render to assemble the context options tab bar
   // NOTE: I'm wrapping the tab bar in a 'header' div. This is
   // in case I decide to add any other content...
-  getTabBarJSX() {
+  getTabBarJsx() {
     const unpickedContexts = this.unpickContexts();
     return (
       <div className="editor-header-wrapper">
@@ -663,7 +676,7 @@ export default class SilverEditor extends React.Component {
 
   // GET FORM JSX
   // Called from render to assemble the editor form...
-  getFormJSX() {
+  getFormJsx() {
     // Section dropdown
     const sectionSelect = this.getSectionSelect();
     // Chart type dropdown
@@ -682,22 +695,86 @@ export default class SilverEditor extends React.Component {
   }
   // GET FORM JSX ends
 
+  // MAKE FOLD JSX
+  // Builds accordian 'fold' (LI) and contents
+  // Arg is a string referring to an element defined, above, in props.folds
+  makeFoldJsx(fName) {
+    const propFold = this.props.folds[fName];
+    const stateFold = this.state.folds[fName];
+    // The 'open' fold has a height determined by a toggled class
+    let liClass = '';
+    if (stateFold.open) {
+      liClass = `${fName}-fold`;
+    }
+    const headClass = `${fName}-fold-head`;
+    const bDisplay = propFold.display;
+    const defText = propFold.defaultText;
+    /* Structure is:
+        li
+          header div
+            button div
+            span
+          body div
+    */
+    return (
+      <li className={liClass} key={fName}>
+        <div className={headClass}>
+          <div onClick={this.catchFoldButtonClick.bind(this)}>{bDisplay}</div>
+          <span className="data-fold-head-span">{defText}</span>
+        </div>
+        <div className="data-fold-body">{`Body of ${fName}`}</div>
+      </li>
+    );
+  }
+  // MAKE FOLD JSX ends
+
+  // CATCH FOLD BUTTON CLICK
+  // Event-catcher for click on accordian fold-open button
+  // Resets state with updated fold open/close flab
+  catchFoldButtonClick(evt) {
+    const folds = this.state.folds;
+    const thisKey = evt.target.innerHTML.toLowerCase();
+    const thisFold = folds[thisKey];
+    console.log(thisKey);
+    // I'm only interested in opening folds
+    if (thisFold.open) {
+      console.log('Already open, thanks');
+      return;
+    }
+    // Still here: I want to open a closed fold...
+    for (const key in folds) {
+      folds[key].open = (key === thisKey);
+    }
+    this.setState({ folds });
+  }
+  // CATCH FOLD BUTTON CLICK ends
+
   // RENDER
   // editorHeaderStructure is currently the context tab bar
   // remainder is the json-editor form
   render() {
-    // General form structure:
-    const formJSX = this.getFormJSX();
+    // NOTE: General form structure used this:
+    // let formJsx = this.getFormJsx();
+    // ...which I've copied to the utilities module for safe-keeping
+    // Now attempting accordion structure...
+    // NOTE: I could derive 'folds' from props definitions, but sooner
+    // or later I hit inferential fun, so let's keep it crude and simple...
+    // ...at least we can see what we're throwing around:
+    const dataFoldJsx = this.makeFoldJsx('data');
+    const layoutFoldJsx = this.makeFoldJsx('layout');
+    const scalesFoldJsx = this.makeFoldJsx('scales');
     // Tab bar (dependent component) at top of chart div, for context choices:
-    const tabBarJSX = this.getTabBarJSX();
+    const tabBarJsx = this.getTabBarJsx();
     return (
       <div className="silverbullet-editor-wrapper">
         <div className="editor-form-outer-wrapper">
-          <div className="editor-form-inner-wrapper">
-            {formJSX}
-          </div>
+          <ul className="editor-form-accordion">
+            {dataFoldJsx}
+            {layoutFoldJsx}
+            {scalesFoldJsx}
+          </ul>
         </div>
-        {tabBarJSX}
+        {tabBarJsx}
       </div>
     );
   }

@@ -17,36 +17,148 @@
   right: 0;
   width: 200%;
   height: 30px;
+  pointer-events: none;
 }
 
 /* Outer wrapper for form */
 .editor-form-outer-wrapper {
   position: absolute;
-  top: -10px;
+  /*top: -10px;*/
   height: 95%;
   width: 95%;
   margin-left: 3%;
   overflow: hidden;
 }
+
 /* Scrollable container for form */
-.editor-form-inner-wrapper {
-  /*position: absolute;*/
+.editor-form-accordion {
   top: 0;
   width: 100%;
   height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
-}
-/* Acknowledgement at bottom of editor */
-.editor-form-inner-wrapper::after {
-  display: block;
-  content: 'json-editor copyright (c) 2013 Jeremy Dorn: github.com/jdorn/json-editor';
-  margin-top: 20px;
+  list-style:none;
   font-family: 'OfficinaSanITC-Book';
-  font-size: 10px;
-  text-align: center;
-  color: #777;
+  font-size: 12px;
+  font-weight: normal;
+  margin:0;
+  padding:0;
 }
+
+.editor-form-accordion li{
+    float:none;
+    /* Default height is 'header' only */
+    height:40px;
+    width:100%;
+    padding:0;
+    margin:0;
+    -moz-transition:height 0.2s ease-out;
+    -webkit-transition:height 0.2s ease-out;
+    -o-transition:height 0.2s ease-out;
+    transition:height 0.2s ease-out;
+    overflow:hidden;
+    -moz-transition-delay:0.15s;
+    -webkit-transition-delay:0.15s;
+    -o-transition-delay:0.15s;
+    transition-delay:0.15s;
+}
+
+
+/* Each fold li has a specific height */
+.editor-form-accordion li.data-fold {
+    height:250px;
+}
+.editor-form-accordion li.layout-fold {
+    height:250px;
+}
+.editor-form-accordion li.scales-fold {
+    height:150px;
+}
+/*.editor-form-accordion li.strings-section {
+    height:250px;
+}
+.editor-form-accordion li.timeseries-section {
+    height:250px;
+}
+.editor-form-accordion li.platform-section {
+    height:300px;
+}
+.editor-form-accordion li.doublescale-section {
+    height:200px;
+}
+.editor-form-accordion li.style-section {
+    height:150px;
+}
+.editor-form-accordion li.scales-section {
+    height:300px;
+}
+.editor-form-accordion li.finish-section {
+    height:400px;
+}*/
+
+
+/* Defaults for section head and body, which are children of li-->div... ; */
+.editor-form-accordion li>div:first-child{
+    /* section head div */
+    border-color: #DEDEDE;
+    border-style: solid;
+    border-width: 1px 1px 0 1px;
+    height:40px;
+    width: 100%;
+    background-color: white;
+    font-family: Officina;
+}
+.editor-form-accordion li>div:not(:first-child){
+    /* section body div */
+    border-top: #DEDEDE solid 1px;
+    height:260px;
+    width: 100%;
+    background-color: #EFEFEF;
+}
+
+/* Provisionally each section head contains two items: a span and a div (btn) */
+/* Accordian header buttons */
+/* General button attributes, over-ridden in specific instances... */
+.editor-form-accordion li>div:first-child div{
+    float: left;
+    width: 20%;
+    height: 95%;
+    background-color:#DDDDDD;
+    border:#CCC 1px solid;
+    color:#999999;
+    font-family: 'OfficinaSanITC-Book';
+    font-size:14px;
+    line-height: 3em;
+    padding:0;
+    margin: 0;
+    text-align: center;
+    cursor: pointer;
+}
+.editor-form-accordion li>div:first-child div:hover {
+    background-color: #AAAAAA;
+    color: #000000;
+}
+.editor-form-accordion li>div:first-child div:active {
+    font-weight: bold;
+    background-color: #CCCCCD;
+    letter-spacing: -1px;
+}
+
+.editor-form-accordion li>div:first-child span{
+    float: left;
+    height: 95%;
+    width: 75%;
+    background-color: white;
+    font-family: 'OfficinaSanITC-Book';
+    font-size:14px;
+    font-weight: normal;
+    line-height: 3em;
+    text-align: right;
+    margin:0;
+    padding:0;
+}
+
+
 
 /* Context choices wrapper: left half of Editor header */
 .chart-context-choices-div {
@@ -55,6 +167,7 @@
   left: 2px;
   width: 49%;
   height: 100%;
+  pointer-events: all;
 }
 /* Reset button wrapper: right half of Editor header */
 .chart-reset-wrapper {
@@ -64,8 +177,9 @@
   width: 50%;
   height: 100%;
   pointer-events: none;
+  /* NOTE: I've hidden the reset button for now...*/
+  display: none;
 }
-
 
 /*
 .context-choice {

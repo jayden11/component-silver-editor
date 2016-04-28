@@ -85,3 +85,28 @@ this.editorForm.on('change', () => {
 // refer only to operations...?
 this.setDynamicSchemaVals();
 */
+
+
+/*
+The original form jsx constructor:
+// GET FORM JSX
+// Called from render to assemble the editor form...
+getFormJsx() {
+  // Section dropdown
+  const sectionSelect = this.getSectionSelect();
+  // Chart type dropdown
+  const typeSelect = this.getTypeSelect();
+  // To come:
+  //  panels
+  //  ...and all the rest of it...
+  return (
+    <form id="json-editor"
+      onChange={this.catchEditorFormChange.bind(this)}
+    >
+      {sectionSelect}
+      {typeSelect}
+    </form>
+  );
+}
+// GET FORM JSX ends
+*/
