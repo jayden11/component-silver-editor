@@ -9,12 +9,6 @@ import Preferences from './assets/preferences.json';
 // Utilities module
 import * as EditorUtilities from './editorutilities';
 
-// NOTE: the EDITOR is still very provisional and will remain so until
-// I've sorted out all the structural issues and got all the options
-// into the FORM.
-// As of 10.2.16, we seem to be stateless. The only pseudo-globals are the
-// context, subcontext and type strings, with are properties of ConfigObject
-
 export default class SilverEditor extends React.Component {
 
   // PROP TYPES
@@ -22,6 +16,7 @@ export default class SilverEditor extends React.Component {
     return {
       // Callback to Sibyl
       passUpdatedConfig: React.PropTypes.func.isRequired,
+      // Default fold definitions, which it seems reasonable to keep here...
       folds: React.PropTypes.object,
     };
   }
@@ -32,9 +27,9 @@ export default class SilverEditor extends React.Component {
       // NOTE: 'iden' must match specific fold selector in css
       folds: {
         data: { iden: 'data', display: 'Data', defaultText: 'Fold for data textarea',
-          valid: false, open: true },
-        layout: { iden: 'layout', display: 'Layout', defaultText: 'Chart type and section',
           valid: false, open: false },
+        layout: { iden: 'layout', display: 'Layout', defaultText: 'Chart type, section and structure',
+          valid: false, open: true },
         scales: { iden: 'scales', display: 'Scales', defaultText: 'Chart scales',
           valid: false, open: false },
       },
@@ -42,6 +37,7 @@ export default class SilverEditor extends React.Component {
   }
 
   // CONSTRUCTOR
+  // 'folds' definitions object is in state, for accordion un/folding
   constructor(props) {
     super(props);
     this.state = {
@@ -52,72 +48,13 @@ export default class SilverEditor extends React.Component {
 
   // COMPONENT DID MOUNT
   componentDidMount() {
-    console.log(Preferences);
-    return;
+    console.log(ConfigObject);
   }
   // COMPONENT DID MOUNT ends
 
-  // SET DYNAMIC SCHEMA VALUES
-  // Currently called from:
-  //    componentDidMount after initial render
-  //    *******, when user selects new context on tabs
-  //    catchTextAreaPasteEvent, when user pastes new data into the textarea
-  // Sets dynamic values in the schema
-  // NOTE: currently assumes that properties are available in state...
-  setDynamicSchemaVals() {
-    // Current context and widths array:
-    const context = ConfigObject.metadata.context;
-    const subContext = ConfigObject.metadata.subcontext;
-    const contextNode = Preferences.contexts[context];
-    const widthsArray = contextNode.editor.subcontexts;
-    // Bale out now. I assume that when I update the EditorSchema
-    // that provokes a 'change' event, and we're off...
-    return;
-    // NOTE: I don't think we need this any more:
-    if (typeof this.editorForm !== 'undefined') {
-      // Strings: title, subtitle, source, footnote
-      const eSource = EditorSchema.properties.strings.properties;
-      this.editorForm.getEditor('root.strings.title').setValue(eSource.title.default);
-      this.editorForm.getEditor('root.strings.subtitle').setValue(eSource.subtitle.default);
-      this.editorForm.getEditor('root.strings.source').setValue(eSource.source.default);
-      this.editorForm.getEditor('root.strings.footnote').setValue(eSource.footnote.default);
-      // Width
-      const val = widthsArray[subContext];
-      this.editorForm.getEditor('root.dimensions.width').setValue(val);
-    } else {
-      // NOTE: this should never run, but keep a check on it for now...
-      console.log('I should not be hitting this point in Editor.setDynamicSchemaVals...');
-    }
-  }
-  // SET DYNAMIC SCHEMA VALUES ends
-
-  // GET BAR CHART INNER-BOX HEIGHT
-  // Called from componentDidMount; param is the validated config object.
-  // (A) If this is a bar chart, calls getBarChartHeight to calculate innerbox height
-  // and consequent overall chart height, which it displays as the recommended chart outer
-  // height (based on number of bars)...
-  // NOTE: I'll have to catch stacked and overlapping bars eventually...
-  // (B) For other styles, it would *probably* (remains to be decided) just derive
-  // innerbox height from overall height...
-  // In either case, returns innerbox height
-  getChartInnerboxHeight(config) {
-    // NOTE: chart style hard-coded here for now. Eventually get style from editorForm...
-    const style = 'bars';
-    const hDescrip = this.editorForm.getEditor('root.dimensions.height').description;
-    if (style === 'bars') {
-      const heightObj = this.getBarChartHeight(config);
-      hDescrip.innerHTML = `Recommended height: <span>${heightObj.outerHeight}pts</span>. Click to use...`;
-      // Reset event on span:
-      const barRecommendSpan = document.querySelectorAll('.form-control p span')[0];
-      barRecommendSpan.onclick = this.catchBarSpanEvent.bind(this);
-      innerHeight = heightObj.innerHeight;
-    } else {
-      hDescrip.innerHTML = '';
-      // eventually return something...
-    }
-    return innerHeight;
-  }
-    // SHOW BAR HEIGHT RECOMMENDATION
+  // SET DYNAMIC SCHEMA VALUES: in utilities
+  // GET CHART INNER-BOX HEIGHT: in utilities
+  // GET BAR CHART HEIGHT: in utilities
 
   // VALIDATE FORM
   // I can't separate detailed validation of the raw data
@@ -218,67 +155,6 @@ export default class SilverEditor extends React.Component {
   }
   // PASS CONFIG TO SIBYL ends
 
-  // GET BAR CHART HEIGHT
-  // Some styles -- well, bar charts, anyway -- force the chart height
-  // Param is the validated config object
-  getBarChartHeight(config) {
-    const context = ConfigObject.context;
-    // NOTE: currently, Editor doesn't care about sub-context...
-    // const subContext = ConfigObject.subcontext;
-    const style = ConfigObject.style;
-    const contextNode = EditorConfig.contexts[context];
-    const styleNode = contextNode.style_specific[style];
-    // Stacked?
-    // NOTE: hard-coded for now...
-    const isStacked = false;
-    // Get default margins (not user-tweakable)
-    const margins = ConfigObject.dimensions[context].margins;
-    // Number of points and series
-    const pointCount = config.pointCount;
-    let seriesCount = config.seriesCount;
-    // If bars are stacked, that counts, for this function's purposes, as
-    // a single trace:
-    if (isStacked) {
-      seriesCount = 1;
-    }
-    // Array of cluster-heights to use if bars are side-by-side,
-    // up to a max of four series (squeeze after that). And gap height.
-    const clusterHeights = styleNode.clusterHeights;
-    const gapHeight = styleNode.gap;
-    if (seriesCount > clusterHeights.length) {
-      seriesCount = clusterHeights.length - 1;
-    }
-    // So: height of one cluster
-    const clusterHeight = clusterHeights[seriesCount - 1];
-    // ...and height of all bars together
-    let innerBoxHeight = clusterHeight * pointCount;
-    // NOTE: this is adapted from my old Excel code, which also allowed for
-    // overlapping bars. However, we've never used them, so go with a flag:
-    // isStacked (false = bars side by side).
-    // Code just below, comm'd out, is close to the Excel original. Left
-    // here for possible reference...
-    // Firefox doesn't like 'includes', so:
-    /*
-    if (chartStyle.search('overlap') >= 0) {
-      innerBoxHeight -= clusterHeight;
-      innerBoxHeight -= ((clusterHeight / 2) * (seriesCount - 1));
-    }
-    */
-    // OK: back on track after that diversion. Now allow for gaps, and return...
-    // innerBoxHeight += (gapHeight * (pointCount - 1));
-    // NOTE: previous line assumed no outer padding. But I'm currently
-    // going with outerpadding = innerpadding/2... So:
-    innerBoxHeight += (gapHeight * (pointCount));
-    // Add top and bottom margins, round up to nearest 5, and return:
-    const returnedHeight = innerBoxHeight + margins.top + margins.bottom;
-    // Return an object with inner and outer heights...
-    return {
-      innerHeight: innerBoxHeight,
-      outerHeight: Math.ceil(returnedHeight / 5) * 5,
-    };
-  }
-  // .innerHeight and .outerHeight
-  // GET BAR CHART HEIGHT ends
 
   // ====================================
 
@@ -555,7 +431,7 @@ export default class SilverEditor extends React.Component {
     ConfigObject.metadata.subcontext = obj.child;
     // NOTE: comm'd out call that kicks off chart draw...
     // this.setDynamicSchemaVals();
-    console.log(ConfigObject)
+    console.log(ConfigObject);
   }
   // FIELD CONTEXT FROM TAB BAR ends
 
@@ -565,6 +441,7 @@ export default class SilverEditor extends React.Component {
     unpickContexts() {
       // Get default context and all context nodes from lookup:
       const defaultContext = Preferences.metadata.defaults.context;
+      const defaultSubContext = Preferences.metadata.defaults.subcontext;
       const contexts = Preferences.contexts;
       // Result will be an array of context definitions
       const result = [];
@@ -590,6 +467,9 @@ export default class SilverEditor extends React.Component {
           result.push(tempObj);
         }
       });
+      // Update CO with default values:
+      ConfigObject.metadata.context = defaultContext;
+      ConfigObject.metadata.subcontext = defaultSubContext;
       return result;
     }
     // UNPICK CONTEXTS ends
@@ -626,13 +506,20 @@ export default class SilverEditor extends React.Component {
   // GET TAB BAR JSX ends
 
 
-  catchTypeChange(evt) {
-    ConfigObject.metadata.type = evt.target.value;
-  }
+// CATCH TYPE CHANGE
+// Listener to change event on chart Type dropdown
+catchTypeChange(evt) {
+  ConfigObject.metadata.type = evt.target.value;
+  console.log(ConfigObject);
+}
 
+  // CATCH SECTION CHANGE
+  // Listener to change event on Section dropdown
   catchSectionChange(evt) {
     ConfigObject.metadata.section = evt.target.value;
+    console.log(ConfigObject);
   }
+  // CATCH SECTION CHANGE ends
 
   // GET SECTION SELECT
   // Assembles style dropdown
@@ -642,6 +529,8 @@ export default class SilverEditor extends React.Component {
       <option key={index} value={opt.id}>{opt.display}</option>
     ));
     const defaultValue = Preferences.metadata.defaults.section;
+    // Update the config object:
+    ConfigObject.metadata.section = defaultValue;
     return (
       <select className="editor-section-select" defaultValue={defaultValue}
         onChange={this.catchSectionChange.bind(this)}
@@ -660,6 +549,8 @@ export default class SilverEditor extends React.Component {
       <option key={index} value={opt.id}>{opt.display}</option>
     ));
     const defaultValue = Preferences.metadata.defaults.type;
+    // Update the config object:
+    ConfigObject.metadata.type = defaultValue;
     return (
       <select className="editor-type-select" defaultValue={defaultValue}
         onChange={this.catchTypeChange.bind(this)}
@@ -670,26 +561,55 @@ export default class SilverEditor extends React.Component {
   }
   // GET TYPE SELECT ends
 
-  catchEditorFormChange(evt) {
-    console.log(evt);
+  getPanelInputs() {
+    /*
+    .append('<label class="admin-label printpanel-label">Panel</label>')
+    .append('<label class="admin-label printof-label">of</label>')
+    .append('<label class="admin-label printrows-label">Number of rows:</label>')
+    .append('<label class="admin-label printsvp-label">Single visible panel:</label>')
+    //
+    .append('<input type="text" class="admin-textinput print-input printpanel-input" name="panel">')
+    .append('<input type="text" class="admin-textinput print-input printof-input" name="of">')
+    .append('<input type="text" class="admin-textinput print-input printrows-input" name="rows">')
+    */
+    return (
+      <fieldset className="accordion-layout-panel-fieldset">
+        <legend>Panels</legend>
+        <label className="accordion-label accordion-layout-panelnumber-label">Panel</label>
+        <input className="accordion-input accordion-layout-panelnumber-input" defaultValue="1"></input>
+        <label className="accordion-label accordion-layout-paneltotal-label">of</label>
+        <input className="accordion-input accordion-layout-paneltotal-input" defaultValue="1"></input>
+        <label className="accordion-label accordion-layout-panelrows-label">rows</label>
+        <input className="accordion-input accordion-layout-panelrows-input" defaultValue="1"></input>
+      </fieldset>
+    );
   }
 
-  // GET FORM JSX
-  // Called from render to assemble the editor form...
-  getFormJsx() {
+  // CATCH LAYOUT FORM CHANGE
+  // Hypothetical listener for change event on entire layout form
+  // ...whether I actually want it is another matter...
+  catchLayoutFormChange(evt) {
+    // console.log(evt.target);
+  }
+  // CATCH LAYOUT FORM CHANGE ends
+
+  // GET LAYOUT FORM JSX
+  // Called from makeFoldJsx to construct the JSX definitions for the Layout fold
+  getLayoutFormJsx() {
     // Section dropdown
     const sectionSelect = this.getSectionSelect();
     // Chart type dropdown
     const typeSelect = this.getTypeSelect();
-    // To come:
-    //  panels
+    // Panels inputs
+    const panelInputs = this.getPanelInputs();
     //  ...and all the rest of it...
+    // I don't think I need the onChange on the form...
+    // onChange={this.catchLayoutFormChange.bind(this)}
     return (
-      <form id="json-editor"
-        onChange={this.catchEditorFormChange.bind(this)}
-      >
-        {sectionSelect}
+      <form className="accordion-fold-form">
         {typeSelect}
+        {sectionSelect}
+        {panelInputs}
       </form>
     );
   }
@@ -698,6 +618,7 @@ export default class SilverEditor extends React.Component {
   // MAKE FOLD JSX
   // Builds accordian 'fold' (LI) and contents
   // Arg is a string referring to an element defined, above, in props.folds
+  // In theory, this function will serve as a triage nurse for any 'fold'...
   makeFoldJsx(fName) {
     const propFold = this.props.folds[fName];
     const stateFold = this.state.folds[fName];
@@ -709,20 +630,36 @@ export default class SilverEditor extends React.Component {
     const headClass = `${fName}-fold-head`;
     const bDisplay = propFold.display;
     const defText = propFold.defaultText;
+    // Switch on arg to get fold content:
+    let foldContent = <span>Body of ${fName}</span>;
+    switch (fName) {
+      case 'data':
+        foldContent = <span>Body of ${fName}</span>;
+        break;
+      case 'layout':
+        foldContent = this.getLayoutFormJsx();
+        break;
+      case 'scales':
+        foldContent = <span>Body of ${fName}</span>;
+        break;
+      default:
+        foldContent = <span>Body of ${fName}</span>;
+    }
     /* Structure is:
         li
           header div
             button div
             span
           body div
+            fold-specific elements
     */
     return (
       <li className={liClass} key={fName}>
         <div className={headClass}>
           <div onClick={this.catchFoldButtonClick.bind(this)}>{bDisplay}</div>
-          <span className="data-fold-head-span">{defText}</span>
+          <span className="accordion-fold-head-span">{defText}</span>
         </div>
-        <div className="data-fold-body">{`Body of ${fName}`}</div>
+        <div className="accordion-fold-body">{foldContent}</div>
       </li>
     );
   }
@@ -735,16 +672,15 @@ export default class SilverEditor extends React.Component {
     const folds = this.state.folds;
     const thisKey = evt.target.innerHTML.toLowerCase();
     const thisFold = folds[thisKey];
-    console.log(thisKey);
-    // I'm only interested in opening folds
+    // I'm only interested in opening folds that are currently closed
     if (thisFold.open) {
-      console.log('Already open, thanks');
       return;
     }
     // Still here: I want to open a closed fold...
     for (const key in folds) {
       folds[key].open = (key === thisKey);
     }
+    // Update state and re-render
     this.setState({ folds });
   }
   // CATCH FOLD BUTTON CLICK ends
@@ -753,12 +689,9 @@ export default class SilverEditor extends React.Component {
   // editorHeaderStructure is currently the context tab bar
   // remainder is the json-editor form
   render() {
-    // NOTE: General form structure used this:
-    // let formJsx = this.getFormJsx();
-    // ...which I've copied to the utilities module for safe-keeping
-    // Now attempting accordion structure...
-    // NOTE: I could derive 'folds' from props definitions, but sooner
-    // or later I hit inferential fun, so let's keep it crude and simple...
+    // Accordion structure...
+    // NOTE: I could derive the fold ID names, below, from props definitions,
+    // but sooner or later I hit inferential functions, so let's keep it crude and simple...
     // ...at least we can see what we're throwing around:
     const dataFoldJsx = this.makeFoldJsx('data');
     const layoutFoldJsx = this.makeFoldJsx('layout');

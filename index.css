@@ -158,6 +158,59 @@
     padding:0;
 }
 
+.accordion-fold-form {
+  position: relative;
+}
+
+/* Shared props of accordion label/input elements */
+.accordion-label, .accordion-input {
+  position: absolute;
+}
+
+/* Panel options */
+.accordion-layout-panel-fieldset {
+  position: absolute;
+  top: 60px;
+  left: 50px;
+  width: 250px;
+  height: 40px;
+}
+.accordion-layout-panelnumber-label {
+    left: 20px;
+    top:20px;
+}
+.accordion-layout-paneltotal-label {
+    left: 120px;
+    top:20px;
+}
+.accordion-layout-panelrows-label {
+    left: 215px;
+    top:20px;
+}
+.accordion-layout-singlevisiblepanel-label {
+    left: 20px;
+    top:20px;
+}
+
+.accordion-layout-panelnumber-input {
+  left: 62px;
+  top:17px;
+  width:20px;
+}
+.accordion-layout-paneltotal-input {
+  left: 140px;
+  top: 17px;
+  width:20px;
+}
+.accordion-layout-panelrows-input {
+  left: 180px;
+  top:17px;
+  width:20px;
+}
+.accordion-layout-singlevisiblepanel-checkbox {
+  left: 190px;
+  top:17px;
+}
 
 
 /* Context choices wrapper: left half of Editor header */
@@ -288,12 +341,12 @@
 
 .editor-type-select {
   position: absolute;
-  top: 100px;
-  left: 50px;
+  top: 20px;
+  left: 20px;
 }
 
 .editor-section-select {
   position: absolute;
-  top: 100px;
+  top: 20px;
   left: 150px;
 }

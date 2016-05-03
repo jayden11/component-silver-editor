@@ -25,6 +25,101 @@ export function getFormJSX() {
 }
 // GET FORM JSX ends
 
+
+// BAR CHART STUFF:::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
+
+// GET CHART INNER-BOX HEIGHT
+// Called from componentDidMount; param is the validated config object.
+// (A) If this is a bar chart, calls getBarChartHeight to calculate innerbox height
+// and consequent overall chart height, which it displays as the recommended chart outer
+// height (based on number of bars)...
+// NOTE: I'll have to catch stacked and overlapping bars eventually...
+// (B) For other styles, it would *probably* (remains to be decided) just derive
+// innerbox height from overall height...
+// In either case, returns innerbox height
+export function getChartInnerboxHeight(config) {
+  // NOTE: chart style hard-coded here for now. Eventually get style from editorForm...
+  const style = 'bars';
+  const hDescrip = this.editorForm.getEditor('root.dimensions.height').description;
+  if (style === 'bars') {
+    const heightObj = this.getBarChartHeight(config);
+    hDescrip.innerHTML = `Recommended height: <span>${heightObj.outerHeight}pts</span>. Click to use...`;
+    // Reset event on span:
+    const barRecommendSpan = document.querySelectorAll('.form-control p span')[0];
+    barRecommendSpan.onclick = this.catchBarSpanEvent.bind(this);
+    innerHeight = heightObj.innerHeight;
+  } else {
+    hDescrip.innerHTML = '';
+    // eventually return something...
+  }
+  return innerHeight;
+}
+// GET CHART INNER-BOX HEIGHT ends
+
+// GET BAR CHART HEIGHT
+// Some styles -- well, bar charts, anyway -- force the chart height
+// Param is the validated config object
+getBarChartHeight(config) {
+  const context = ConfigObject.context;
+  // NOTE: currently, Editor doesn't care about sub-context...
+  // const subContext = ConfigObject.subcontext;
+  const style = ConfigObject.style;
+  const contextNode = EditorConfig.contexts[context];
+  const styleNode = contextNode.style_specific[style];
+  // Stacked?
+  // NOTE: hard-coded for now...
+  const isStacked = false;
+  // Get default margins (not user-tweakable)
+  const margins = ConfigObject.dimensions[context].margins;
+  // Number of points and series
+  const pointCount = config.pointCount;
+  let seriesCount = config.seriesCount;
+  // If bars are stacked, that counts, for this function's purposes, as
+  // a single trace:
+  if (isStacked) {
+    seriesCount = 1;
+  }
+  // Array of cluster-heights to use if bars are side-by-side,
+  // up to a max of four series (squeeze after that). And gap height.
+  const clusterHeights = styleNode.clusterHeights;
+  const gapHeight = styleNode.gap;
+  if (seriesCount > clusterHeights.length) {
+    seriesCount = clusterHeights.length - 1;
+  }
+  // So: height of one cluster
+  const clusterHeight = clusterHeights[seriesCount - 1];
+  // ...and height of all bars together
+  let innerBoxHeight = clusterHeight * pointCount;
+  // NOTE: this is adapted from my old Excel code, which also allowed for
+  // overlapping bars. However, we've never used them, so go with a flag:
+  // isStacked (false = bars side by side).
+  // Code just below, comm'd out, is close to the Excel original. Left
+  // here for possible reference...
+  // Firefox doesn't like 'includes', so:
+  /*
+  if (chartStyle.search('overlap') >= 0) {
+    innerBoxHeight -= clusterHeight;
+    innerBoxHeight -= ((clusterHeight / 2) * (seriesCount - 1));
+  }
+  */
+  // OK: back on track after that diversion. Now allow for gaps, and return...
+  // innerBoxHeight += (gapHeight * (pointCount - 1));
+  // NOTE: previous line assumed no outer padding. But I'm currently
+  // going with outerpadding = innerpadding/2... So:
+  innerBoxHeight += (gapHeight * (pointCount));
+  // Add top and bottom margins, round up to nearest 5, and return:
+  const returnedHeight = innerBoxHeight + margins.top + margins.bottom;
+  // Return an object with inner and outer heights...
+  return {
+    innerHeight: innerBoxHeight,
+    outerHeight: Math.ceil(returnedHeight / 5) * 5,
+  };
+}
+// .innerHeight and .outerHeight
+// GET BAR CHART HEIGHT ends
+
+
+
 //
 // Below here is 'spare stuff' deleted from index.es6
 
@@ -109,4 +204,40 @@ getFormJsx() {
   );
 }
 // GET FORM JSX ends
+*/
+
+/*
+// SET DYNAMIC SCHEMA VALUES
+// Currently called from:
+//    componentDidMount after initial render
+//    *******, when user selects new context on tabs
+//    catchTextAreaPasteEvent, when user pastes new data into the textarea
+// Sets dynamic values in the schema
+// NOTE: currently assumes that properties are available in state...
+setDynamicSchemaVals() {
+  // Current context and widths array:
+  const context = ConfigObject.metadata.context;
+  const subContext = ConfigObject.metadata.subcontext;
+  const contextNode = Preferences.contexts[context];
+  const widthsArray = contextNode.editor.subcontexts;
+  // Bale out now. I assume that when I update the EditorSchema
+  // that provokes a 'change' event, and we're off...
+  return;
+  // NOTE: I don't think we need this any more:
+  if (typeof this.editorForm !== 'undefined') {
+    // Strings: title, subtitle, source, footnote
+    const eSource = EditorSchema.properties.strings.properties;
+    this.editorForm.getEditor('root.strings.title').setValue(eSource.title.default);
+    this.editorForm.getEditor('root.strings.subtitle').setValue(eSource.subtitle.default);
+    this.editorForm.getEditor('root.strings.source').setValue(eSource.source.default);
+    this.editorForm.getEditor('root.strings.footnote').setValue(eSource.footnote.default);
+    // Width
+    const val = widthsArray[subContext];
+    this.editorForm.getEditor('root.dimensions.width').setValue(val);
+  } else {
+    // NOTE: this should never run, but keep a check on it for now...
+    console.log('I should not be hitting this point in Editor.setDynamicSchemaVals...');
+  }
+}
+// SET DYNAMIC SCHEMA VALUES ends
 */
