@@ -106,7 +106,7 @@
       "type": "bar",
       "panels": {
         "number": 1,
-        "of": 1,
+        "total": 1,
         "rows": 1
       }
     }

@@ -56,42 +56,28 @@ export default class SilverEditor extends React.Component {
   // GET CHART INNER-BOX HEIGHT: in utilities
   // GET BAR CHART HEIGHT: in utilities
 
-  // VALIDATE FORM
-  // I can't separate detailed validation of the raw data
-  // from unpicking. so this just runs JsonEditor's validation.
-  // This is fairly basic: value types (string, interger) and lengths (min/max)
-  validateForm(eForm) {
-    let isValid = true;
-    const errors = eForm.validate();
-    if (errors.length > 0) {
-      isValid = false;
-    }
-    return isValid;
+  validateConfigObject() {
+    console.log(ConfigObject.metadata);
+    return true;
   }
-  // VALIDATE FORM ends
+
+  // FIELD UPDATED CONFIG OBJECT
+  // Called from ALL form elements' event listeners...
+  // ...if value is valid. Individual listeners have
+  // updated the CO. In theory it is valid, but I may want
+  // to do subsequent checks before tossing it up to Sibyl
+  fieldUpdatedConfigObject() {
+    if  (this.validateConfigObject()) {
+      const config = {...ConfigObject};
+      this.props.passUpdatedConfig(config);
+    }
+  }
+
 
   // UNPICK CONFIG
   // Reshape form values to suit SilverBullet, then pass back...
   unpickConfig(eForm) {
     // Get actual values:
-    const editorVals = eForm.getValue();
-    // We plan to return a config object...
-    // ...which is invalid by default
-    const config = { isValid: false };
-    // NOTE: for now, hard-code in context and style properties:
-    const context = ConfigObject.context;
-    const subContext = ConfigObject.subcontext;
-    const style = ConfigObject.style;
-    config.context = context;
-    config.subContext = subContext;
-    config.style = style;
-    // Context and style nodes:
-    const contextNode = EditorConfig.contexts[context];
-    const styleNode = contextNode.style_specific[style];
-    // Get gap from specific config node and pass it down...
-    config.gap = styleNode.gap;
-    // Find out what we can from the data
-    // (data, headers, min/max/incr, point/seriesCount, longestCatString)
     const dataObj = this.unpickTsv(editorVals.data);
     // Check validity:
     if (!dataObj.isValid) {
@@ -139,22 +125,6 @@ export default class SilverEditor extends React.Component {
     return config;
   }
   // UNPICK CONFIG ends
-
-  // PASS CONFIG TO SIBYL
-  // Simply lobs the config object back up the tree
-  passConfigToSibyl(config) {
-    // NOTE: Since there's no 'other' component,
-    // hard-set context to 'print'... This hard-coding
-    // has no structural implications and can be deleted
-    // as soon as we have other contexts in play...
-    // console.log(config);
-    config.context = 'print';
-    this.props.passUpdatedConfig(config);
-    // NOTE: testing here...
-    this.editorForm.schema = this.schemaObj;
-  }
-  // PASS CONFIG TO SIBYL ends
-
 
   // ====================================
 
@@ -510,16 +480,61 @@ export default class SilverEditor extends React.Component {
 // Listener to change event on chart Type dropdown
 catchTypeChange(evt) {
   ConfigObject.metadata.type = evt.target.value;
-  console.log(ConfigObject);
+  this.fieldUpdatedConfigObject();
 }
 
   // CATCH SECTION CHANGE
   // Listener to change event on Section dropdown
   catchSectionChange(evt) {
     ConfigObject.metadata.section = evt.target.value;
-    console.log(ConfigObject);
+    this.fieldUpdatedConfigObject();
   }
   // CATCH SECTION CHANGE ends
+
+  // CATCH PANEL CHANGE
+  catchPanelChange(evt) {
+    // Extract panel property from input id
+    const targ = evt.target;
+    const targetId = targ.id.split('-')[1];
+    const newVal = targ.value;
+    const oldVal = ConfigObject.metadata.panels[targetId];
+    // Validate...
+    if (this.validPanelProps(targetId, newVal)) {
+      // If targ is 'total' input, reset max on others:
+      if (targetId === 'total') {
+        this.refs.number.max = newVal;
+        this.refs.rows.max = newVal;
+        ConfigObject.metadata.panels[targetId] = newVal;
+        this.fieldUpdatedConfigObject();
+      }
+    } else {
+      // Ideally there'd be some sort of alert...
+      targ.value = oldVal;
+    }
+  }
+  // CATCH PANEL CHANGE ends
+
+  validPanelProps(targetId, val) {
+    // Take a copy of the current panel properties and
+    // substitute potential new value
+    const panels = {...ConfigObject.metadata.panels};
+    for (const key in panels) {
+      if (key === targetId) {
+        panels[targetId] = val;
+      }
+    }
+    // Check validity
+    if (panels.number > panels.total) {
+      return false;
+    }
+    if (panels.total % panels.rows !== 0) {
+      return false;
+    }
+    if (panels.rows > panels.total) {
+      return false;
+    }
+    return true;
+  }
 
   // GET SECTION SELECT
   // Assembles style dropdown
@@ -532,11 +547,20 @@ catchTypeChange(evt) {
     // Update the config object:
     ConfigObject.metadata.section = defaultValue;
     return (
-      <select className="editor-section-select" defaultValue={defaultValue}
-        onChange={this.catchSectionChange.bind(this)}
-      >
-        {options}
-      </select>
+      <p>
+        <label className="accordion-label"
+          htmlFor="accordion-section-select"
+        >
+          Section
+        </label>
+        <select className="accordion-select"
+          id="accordion-section-select"
+          defaultValue={defaultValue}
+          onChange={this.catchSectionChange.bind(this)}
+        >
+          {options}
+        </select>
+      </p>
     );
   }
   // GET SECTION SELECT ends
@@ -552,46 +576,70 @@ catchTypeChange(evt) {
     // Update the config object:
     ConfigObject.metadata.type = defaultValue;
     return (
-      <select className="editor-type-select" defaultValue={defaultValue}
-        onChange={this.catchTypeChange.bind(this)}
-      >
-        {options}
-      </select>
+      <p>
+        <label className="accordion-label"
+          htmlFor="accordion-type-select"
+        >
+          Chart type
+        </label>
+        <select className="accordion-select"
+          id="accordion-type-select"
+          defaultValue={defaultValue}
+          onChange={this.catchTypeChange.bind(this)}
+        >
+          {options}
+        </select>
+      </p>
     );
   }
   // GET TYPE SELECT ends
 
+  // GET PANEL INPUTS
+  // Constructs contents of the Panels fieldset
   getPanelInputs() {
-    /*
-    .append('<label class="admin-label printpanel-label">Panel</label>')
-    .append('<label class="admin-label printof-label">of</label>')
-    .append('<label class="admin-label printrows-label">Number of rows:</label>')
-    .append('<label class="admin-label printsvp-label">Single visible panel:</label>')
-    //
-    .append('<input type="text" class="admin-textinput print-input printpanel-input" name="panel">')
-    .append('<input type="text" class="admin-textinput print-input printof-input" name="of">')
-    .append('<input type="text" class="admin-textinput print-input printrows-input" name="rows">')
-    */
+    // Get defaults from prefs
+    const panelDefaults = Preferences.metadata.defaults.panels;
+    // Update pass to config object
+    ConfigObject.metadata.panels = panelDefaults;
     return (
       <fieldset className="accordion-layout-panel-fieldset">
         <legend>Panels</legend>
-        <label className="accordion-label accordion-layout-panelnumber-label">Panel</label>
-        <input className="accordion-input accordion-layout-panelnumber-input" defaultValue="1"></input>
-        <label className="accordion-label accordion-layout-paneltotal-label">of</label>
-        <input className="accordion-input accordion-layout-paneltotal-input" defaultValue="1"></input>
-        <label className="accordion-label accordion-layout-panelrows-label">rows</label>
-        <input className="accordion-input accordion-layout-panelrows-input" defaultValue="1"></input>
+        <p>
+        <label htmlFor="panel-number-input">number:</label>
+        <input
+          type="number" id="panel-number-input"
+          defaultValue={panelDefaults.number}
+          min="1" max={panelDefaults.total} ref="number"
+          onBlur={this.catchPanelChange.bind(this)}
+          required
+        ></input>
+        </p>
+        <p>
+        <label htmlFor="panel-total-input">of total:</label>
+        <input
+          type="number" id="panel-total-input"
+          defaultValue={panelDefaults.total}
+          min="1" max="8" ref="total"
+          onBlur={this.catchPanelChange.bind(this)}
+          required
+        ></input>
+        </p>
+        <p>
+        <label htmlFor="panel-rows-input">on rows:</label>
+        <input
+          type="number" id="panel-rows-input"
+          defaultValue={panelDefaults.rows}
+          min="1" max={panelDefaults.total} ref="rows"
+          onBlur={this.catchPanelChange.bind(this)}
+          required
+        ></input>
+        </p>
+
       </fieldset>
     );
   }
+  // GET PANEL INPUTS ends
 
-  // CATCH LAYOUT FORM CHANGE
-  // Hypothetical listener for change event on entire layout form
-  // ...whether I actually want it is another matter...
-  catchLayoutFormChange(evt) {
-    // console.log(evt.target);
-  }
-  // CATCH LAYOUT FORM CHANGE ends
 
   // GET LAYOUT FORM JSX
   // Called from makeFoldJsx to construct the JSX definitions for the Layout fold
@@ -700,8 +748,8 @@ catchTypeChange(evt) {
     const tabBarJsx = this.getTabBarJsx();
     return (
       <div className="silverbullet-editor-wrapper">
-        <div className="editor-form-outer-wrapper">
-          <ul className="editor-form-accordion">
+        <div className="editor-outer-wrapper">
+          <ul className="editor-accordion">
             {dataFoldJsx}
             {layoutFoldJsx}
             {scalesFoldJsx}
