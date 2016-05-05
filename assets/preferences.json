@@ -5,6 +5,7 @@
     "DEFAULT-BACKGROUND":"Default properties for outerbox, background shapes and strings, and panels",
     "background": {
       "outerbox": {
+        "DEFAULT-OUTERBOX-NOTE": "This node probably deletes...",
         "dimensions": {
           "width": "160px",
           "height": "155px"
@@ -35,17 +36,17 @@
     "SECTION-2.1": "PRINT PROPERTIES",
     "print": {
       "PRINT-EDITOR": "Properties that tell the Editor how to present print options",
-      "editor": {
-        "display": "Print",
-        "old_subcontexts": [
-          {"display": "Narrow", "width": 160},
-          {"display": "Medium", "width": 320},
-          {"display": "Wide", "width": 510},
-        ],
-        "subcontexts": {"narrow": 160, "medium": 330, "wide": 510}
-      },
+      "display": "Print",
       "PRINT-DEFAULT": "Non-section-specific print properties (e.g. bb1 fill)",
       "default": {
+        "outerbox": {
+          "dimensions": {
+            "narrow": {"display": "Narrow", "width": 160, "height": 155},
+            "medium": {"display": "Medium", "width": 320, "height": 155},
+            "wide": {"display": "Wide", "width": 510, "height": 155},
+          },
+          "margins": {"left": 6, "right": 6, "top": 6, "bottom": 6}
+        },
         "background": {
           "shapes": {
             "bb1": "This has an overwriting fill"
@@ -54,6 +55,12 @@
       },
       "PRINT-SECTION": "LD",
       "ld": {
+        "outerbox": {
+          "dimensions": {
+            "default": {"display": "Default", "width": 117, "height": 87},
+          },
+          "margins": {"left": 6, "right": 6, "top": 6, "bottom": 6}
+        },
         "background": {
           "shapes": {
             "bb2": "This has an overwriting width and height"
@@ -63,24 +70,54 @@
     },
     "SECTION-2.2": "ESPRESSO PROPERTIES",
     "espresso": {
-      "editor": {
-        "display": "Espresso",
-        "subcontexts": {"default": 200}
-      }
+      "display": "Espresso",
+      "default": {
+        "outerbox": {
+          "dimensions": {
+            "default": {"width": 160, "height": 155},
+          },
+          "margins": {"left": 6, "right": 6, "top": 6, "bottom": 6}
+        },
+        "background": {
+          "shapes": {
+            "bb1": "This has an overwriting fill"
+          }
+        }
+      },
     },
     "SECTION-2.1": "WEB PROPERTIES",
     "web": {
-      "editor": {
-        "display": "Espresso",
-        "subcontexts": {"default": 200}
-      }
+      "display": "Web",
+      "default": {
+        "outerbox": {
+          "dimensions": {
+            "default": {"width": 160, "height": 155},
+          },
+          "margins": {"left": 6, "right": 6, "top": 6, "bottom": 6}
+        },
+        "background": {
+          "shapes": {
+            "bb1": "This has an overwriting fill"
+          }
+        }
+      },
     },
     "SECTION-2.1": "APP PROPERTIES",
     "app": {
-      "editor": {
-        "display": "Espresso",
-        "subcontexts": {"default": 200}
-      }
+      "display": "App",
+      "default": {
+        "outerbox": {
+          "dimensions": {
+            "default": {"width": 160, "height": 155},
+          },
+          "margins": {"left": 6, "right": 6, "top": 6, "bottom": 6}
+        },
+        "background": {
+          "shapes": {
+            "bb1": "This has an overwriting fill"
+          }
+        }
+      },
     }
   },
   "SECTION--2": "CONTEXT-SPECIFIC PROPERTIES... ENDS",
@@ -102,7 +139,7 @@
     "defaults": {
       "context": "print",
       "subcontext": "narrow",
-      "section": "fn",
+      "section": "br",
       "type": "bar",
       "panels": {
         "number": 1,

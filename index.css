@@ -64,11 +64,15 @@
 
 
 /* Each fold li has a specific height */
+/* Selectors must match list of folds in index.es6 > props */
 .editor-accordion .data-fold {
     height:250px;
 }
 .editor-accordion .layout-fold {
     height:250px;
+}
+.editor-accordion .size-fold {
+    height:150px;
 }
 .editor-accordion .scales-fold {
     height:150px;
@@ -166,55 +170,24 @@
   padding-top: 4px;
 }
 
-.accordion-layout-panel-fieldset {
-  margin-top: 20px;
-  width: 30%;
+/* GENERAL FIELDSET STYLE*/
+fieldset {
+  margin: 20px 20px 0 0;
   border: 1px solid rgba(0, 0, 0, 0.1);
+  display: inline;
 }
-
-.accordion-layout-panel-fieldset input {
+.layout-panels-fieldset {
+  width: 30%;
+}
+.layout-panels-fieldset input {
   width: 25px;
 }
-
-/* Panel options */
-/*
-.accordion-layout-panelnumber-label {
-    left: 20px;
-    top:20px;
+.layout-size-fieldset {
+  width: 40%;
 }
-.accordion-layout-paneltotal-label {
-    left: 120px;
-    top:20px;
+.layout-size-fieldset input {
+  width: 40px;
 }
-.accordion-layout-panelrows-label {
-    left: 215px;
-    top:20px;
-}
-.accordion-layout-singlevisiblepanel-label {
-    left: 20px;
-    top:20px;
-}
-
-.accordion-layout-panelnumber-input {
-  left: 62px;
-  top:17px;
-  width:20px;
-}
-.accordion-layout-paneltotal-input {
-  left: 140px;
-  top: 17px;
-  width:20px;
-}
-.accordion-layout-panelrows-input {
-  left: 180px;
-  top:17px;
-  width:20px;
-}
-.accordion-layout-singlevisiblepanel-checkbox {
-  left: 190px;
-  top:17px;
-}*/
-
 
 /* Context choices wrapper: left half of Editor header */
 .chart-context-choices-div {
@@ -237,24 +210,9 @@
   display: none;
 }
 
-/*
-.context-choice {
-  height:100%;
-  float:left;
-  width: 49%;
-  background-color: #ccc;
-  text-align: center;
-  line-height: 2em;
-  margin-right: 1%;
-}
-.context-choice:hover {
-  background-color: #888;
-}
-.context-choice:active {
-  color: #f00;
-}
-*/
 
+
+/* LEGACY FROM THE JSONFORM/SCHEMA */
 /* Editor form... */
 /* Main form header */
 /*#json-editor > div > h3 > span {

@@ -25,6 +25,9 @@ export default class SilverEditor extends React.Component {
   static get defaultProps() {
     return {
       // NOTE: 'iden' must match specific fold selector in css
+      // NOTE: folds are *explicitly* declared *5* times. Any new fold
+      // is declared: here; in makeFoldJsx; twice in render (define as const, render);
+      // and in css...
       folds: {
         data: { iden: 'data', display: 'Data', defaultText: 'Fold for data textarea',
           valid: false, open: false },
@@ -37,7 +40,7 @@ export default class SilverEditor extends React.Component {
   }
 
   // CONSTRUCTOR
-  // 'folds' definitions object is in state, for accordion un/folding
+  // 'folds' definitions object is in state, for accordion (un)folding
   constructor(props) {
     super(props);
     this.state = {
@@ -48,6 +51,7 @@ export default class SilverEditor extends React.Component {
 
   // COMPONENT DID MOUNT
   componentDidMount() {
+    this.updateSizes();
     console.log(ConfigObject);
   }
   // COMPONENT DID MOUNT ends
@@ -55,6 +59,37 @@ export default class SilverEditor extends React.Component {
   // SET DYNAMIC SCHEMA VALUES: in utilities
   // GET CHART INNER-BOX HEIGHT: in utilities
   // GET BAR CHART HEIGHT: in utilities
+
+  // UPDATE SIZES
+  updateSizes() {
+    // Values from CO's metadata:
+    const metadata = ConfigObject.metadata;
+    const context = metadata.context;
+    const subcontext = metadata.subcontext;
+    const section = metadata.section;
+    // Isolate the context node:
+    const contextNode = Preferences.contexts[context];
+    // Is there a section-specific node in this context?
+    // If not, use default...
+    let sectionNode = contextNode[section];
+    if (sectionNode === undefined) {
+      sectionNode = contextNode.default;
+    }
+    // Does the section define subcontexts? If not, use default...
+    // (In practice, I think we'd always use 'default' for defined
+    // subcontexts)
+    let subcontextNode = sectionNode.outerbox.dimensions[subcontext];
+    if (subcontextNode === undefined) {
+      subcontextNode = sectionNode.outerbox.dimensions.default;
+    }
+    // Update inputs:
+    this.refs.width.value = subcontextNode.width;
+    this.refs.height.value = subcontextNode.height;
+    // ...and the config object:
+    ConfigObject.background.outerbox.width = subcontextNode.width;
+    ConfigObject.background.outerbox.height = subcontextNode.height;
+  }
+  // UPDATE SIZES ends
 
   validateConfigObject() {
     console.log(ConfigObject.metadata);
@@ -67,6 +102,7 @@ export default class SilverEditor extends React.Component {
   // updated the CO. In theory it is valid, but I may want
   // to do subsequent checks before tossing it up to Sibyl
   fieldUpdatedConfigObject() {
+    this.updateSizes()
     if  (this.validateConfigObject()) {
       const config = {...ConfigObject};
       this.props.passUpdatedConfig(config);
@@ -400,7 +436,7 @@ export default class SilverEditor extends React.Component {
     ConfigObject.metadata.context = obj.parent;
     ConfigObject.metadata.subcontext = obj.child;
     // NOTE: comm'd out call that kicks off chart draw...
-    // this.setDynamicSchemaVals();
+    this.updateSizes();
     console.log(ConfigObject);
   }
   // FIELD CONTEXT FROM TAB BAR ends
@@ -419,14 +455,13 @@ export default class SilverEditor extends React.Component {
       Object.keys(contexts).forEach((key) => {
         // Exclude my comments (this needs to be deleted... or something... eventually)
         if (key.search('SECTION') < 0) {
-          // We're looking for an 'editor' subnode
-          const obj = contexts[key].editor;
+          const obj = contexts[key];
           // Init obj to return with context name
           // (All lower case; tab bar does uppercasing)
           const tempObj = { parent: key };
           // Subcontexts list:
           const children = [];
-          Object.keys(obj.subcontexts).forEach((val) => {
+          Object.keys(obj.default.outerbox.dimensions).forEach((val) => {
             children.push(val);
           });
           // So we have an array of child names.
@@ -513,6 +548,18 @@ catchTypeChange(evt) {
     }
   }
   // CATCH PANEL CHANGE ends
+
+  // CATCH SIZE CHANGE
+  catchSizeChange(evt) {
+    // Extract panel property from input id
+    const targ = evt.target;
+    const targetId = targ.id.split('-')[1];
+    const newVal = targ.value;
+    // const oldVal = ConfigObject.metadata.panels[targetId];
+    // Validate...?
+    console.log(`${targetId} set to ${newVal}`);
+  }
+  // CATCH SIZE CHANGE ends
 
   validPanelProps(targetId, val) {
     // Take a copy of the current panel properties and
@@ -602,7 +649,7 @@ catchTypeChange(evt) {
     // Update pass to config object
     ConfigObject.metadata.panels = panelDefaults;
     return (
-      <fieldset className="accordion-layout-panel-fieldset">
+      <fieldset className="layout-panels-fieldset">
         <legend>Panels</legend>
         <p>
         <label htmlFor="panel-number-input">number:</label>
@@ -640,6 +687,38 @@ catchTypeChange(evt) {
   }
   // GET PANEL INPUTS ends
 
+  // GET SIZE INPUTS
+  getSizeInputs() {
+    // Get defaults from prefs
+    const panelDefaults = Preferences.metadata.defaults.panels;
+    // Update pass to config object
+//    ConfigObject.metadata.panels = panelDefaults;
+    return (
+      <fieldset className="layout-size-fieldset">
+        <legend>Size</legend>
+        <p>
+          <label htmlFor="size-width-input">width:</label>
+          <input
+            type="number" id="size-width-input"
+            min="50" ref="width"
+            onBlur={this.catchSizeChange.bind(this)}
+            required
+          ></input>
+        </p>
+        <p>
+          <label htmlFor="size-height-input">height:</label>
+          <input
+            type="number" id="size-height-input"
+            min="50" ref="height"
+            onBlur={this.catchSizeChange.bind(this)}
+            required
+          ></input>
+        </p>
+      </fieldset>
+    );
+  }
+  // GET SIZE INPUTS ends
+
 
   // GET LAYOUT FORM JSX
   // Called from makeFoldJsx to construct the JSX definitions for the Layout fold
@@ -649,7 +728,9 @@ catchTypeChange(evt) {
     // Chart type dropdown
     const typeSelect = this.getTypeSelect();
     // Panels inputs
-    const panelInputs = this.getPanelInputs();
+    const panelFieldSet = this.getPanelInputs();
+    // Size inputs
+    const sizeFieldSet = this.getSizeInputs();
     //  ...and all the rest of it...
     // I don't think I need the onChange on the form...
     // onChange={this.catchLayoutFormChange.bind(this)}
@@ -657,7 +738,8 @@ catchTypeChange(evt) {
       <form className="accordion-fold-form">
         {typeSelect}
         {sectionSelect}
-        {panelInputs}
+        {panelFieldSet}
+        {sizeFieldSet}
       </form>
     );
   }
@@ -740,7 +822,6 @@ catchTypeChange(evt) {
     // Accordion structure...
     // NOTE: I could derive the fold ID names, below, from props definitions,
     // but sooner or later I hit inferential functions, so let's keep it crude and simple...
-    // ...at least we can see what we're throwing around:
     const dataFoldJsx = this.makeFoldJsx('data');
     const layoutFoldJsx = this.makeFoldJsx('layout');
     const scalesFoldJsx = this.makeFoldJsx('scales');
