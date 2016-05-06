@@ -1,16 +1,92 @@
 /*    In a bid for structural coherence, I've moved all the Editor's
       untility functions into this file. In theory, this leaves me
       able to see the basic functionality of the Editor...
-      Functions here are:
-  getScaleMinMaxIncr
-  unpickConfig
+      Working functions here are:
+      - validatePanelValues
+      - getScaleMinMaxIncr
 
+      (There are also a number of commented out 'dead' functions)
 */
+
+
+// VALIDATE PANEL VALUES
+// Checks that any value entered in one of the panel inputs is
+// consistent with existing values. Args are: id of the input, its new value,
+// and the config object
+export function validatePanelValues(targetId, val, configObject) {
+  // Clone current CO panel properties & substitute potential new value
+  const panels = {...configObject.metadata.panels};
+  // const panels = configObject.metadata.panels;
+  for (const key in panels) {
+    if (key === targetId) {
+      panels[targetId] = val;
+    }
+  }
+  // Panel number can't exceed total
+  if (panels.number > panels.total) {
+    return false;
+  }
+  // Row count must be exact divisor of total
+  if (panels.total % panels.rows !== 0) {
+    return false;
+  }
+  // Can't have more rows than total
+  if (panels.rows > panels.total) {
+    return false;
+  }
+  // Anything else to check...?
+  // Still here? New val is OK
+  return true;
+}
+// VALIDATE PANEL VALUES ends
+
+// MIN MAX OBJECT
+// Passed 4 args: actual min val; actual max val; ideal number of increment-steps;
+// and the lookup array of plausible increments
+// Returns obj with 4 properties: min, max, increment and an updated step-count
+export function getScaleMinMaxIncr(minVal, maxVal, stepNo, plausibleIncrs) {
+  const mmObj = {};
+  let min = 0;
+  let max = 0;
+  // Min can't exceed zero; max can't be less than zero
+  minVal = Math.min(0, minVal);
+  maxVal = Math.max(0, maxVal);
+  // Do (max-min) / steps to get a raw increment
+  let incr = (maxVal - minVal) / stepNo;
+  // Increment is presumably imperfect, so loop through
+  // the array of values, raising the increment
+  // to the next acceptable value
+  for (let i = 0; i < plausibleIncrs.length; i++) {
+    const plausVal = plausibleIncrs[i];
+    if (plausVal >= incr) {
+      incr = plausVal;
+      break;
+    }
+  }
+  // From zero, lower min to next acceptable value on or below inherited min
+  while (Math.floor(min) > Math.floor(minVal)) {
+    min -= incr;
+  }
+  // From zero, raise max to next acceptable value on or above inherited max
+  while (max < maxVal) {
+    max += incr;
+  }
+  // Revise number of ticks?
+  const ticks = (max - min) / incr;
+  mmObj.min = min;
+  mmObj.max = max;
+  mmObj.increment = incr;
+  mmObj.ticks = ticks;
+  return mmObj;
+}
+// MIN MAX OBJECT ends
+
 
 
 // GET FORM JSX
 // Called from render to assemble the editor form...
-export function getFormJSX() {
+/*
+export function getFormJsx() {
   return (
     <form id="json-editor">
       <select className="editor-style-select" defaultValue="br"
@@ -23,6 +99,7 @@ export function getFormJSX() {
     </form>
   );
 }
+*/
 // GET FORM JSX ends
 
 
@@ -37,6 +114,7 @@ export function getFormJSX() {
 // (B) For other styles, it would *probably* (remains to be decided) just derive
 // innerbox height from overall height...
 // In either case, returns innerbox height
+/*
 export function getChartInnerboxHeight(config) {
   // NOTE: chart style hard-coded here for now. Eventually get style from editorForm...
   const style = 'bars';
@@ -54,12 +132,14 @@ export function getChartInnerboxHeight(config) {
   }
   return innerHeight;
 }
+*/
 // GET CHART INNER-BOX HEIGHT ends
 
 // GET BAR CHART HEIGHT
 // Some styles -- well, bar charts, anyway -- force the chart height
 // Param is the validated config object
-getBarChartHeight(config) {
+/*
+export function getBarChartHeight(config) {
   const context = ConfigObject.context;
   // NOTE: currently, Editor doesn't care about sub-context...
   // const subContext = ConfigObject.subcontext;
@@ -96,12 +176,12 @@ getBarChartHeight(config) {
   // Code just below, comm'd out, is close to the Excel original. Left
   // here for possible reference...
   // Firefox doesn't like 'includes', so:
-  /*
-  if (chartStyle.search('overlap') >= 0) {
-    innerBoxHeight -= clusterHeight;
-    innerBoxHeight -= ((clusterHeight / 2) * (seriesCount - 1));
-  }
-  */
+
+  // if (chartStyle.search('overlap') >= 0) {
+  //   innerBoxHeight -= clusterHeight;
+  //   innerBoxHeight -= ((clusterHeight / 2) * (seriesCount - 1));
+  // }
+
   // OK: back on track after that diversion. Now allow for gaps, and return...
   // innerBoxHeight += (gapHeight * (pointCount - 1));
   // NOTE: previous line assumed no outer padding. But I'm currently
@@ -115,9 +195,9 @@ getBarChartHeight(config) {
     outerHeight: Math.ceil(returnedHeight / 5) * 5,
   };
 }
+*/
 // .innerHeight and .outerHeight
 // GET BAR CHART HEIGHT ends
-
 
 
 //

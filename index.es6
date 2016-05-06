@@ -11,6 +11,11 @@ import * as EditorUtilities from './editorutilities';
 
 export default class SilverEditor extends React.Component {
 
+  // ===========================================================================
+  // === REACT STUFF
+  // === Props, state, lifecycle...
+  // ===========================================================================
+
   // PROP TYPES
   static get propTypes() {
     return {
@@ -41,6 +46,7 @@ export default class SilverEditor extends React.Component {
 
   // CONSTRUCTOR
   // 'folds' definitions object is in state, for accordion (un)folding
+  // TO COME: context definitions for tab-bar
   constructor(props) {
     super(props);
     this.state = {
@@ -55,6 +61,18 @@ export default class SilverEditor extends React.Component {
     console.log(ConfigObject);
   }
   // COMPONENT DID MOUNT ends
+
+  // ===========================================================================
+  // === REACT STUFF ENDS
+  // ===========================================================================
+
+
+  // ===========================================================================
+  // === UNSORTED FUNCTIONS
+  // === A lot of this stuff is legacy from the original
+  // === JsonForm schema. It all needs eventual adaptation/deletion...
+  // ===========================================================================
+
 
   // SET DYNAMIC SCHEMA VALUES: in utilities
   // GET CHART INNER-BOX HEIGHT: in utilities
@@ -128,7 +146,8 @@ export default class SilverEditor extends React.Component {
     // *** Will need to work with 2 scales on scatter charts, eventually...
     // AND PROBABLY IN THE WRONG PLACE -- MOVES DOWN TO ChartWrapper, or something...
     const ticks = contextNode.general.ticks;
-    const mmiObj = this.getScaleMinMaxIncr(dataObj.minVal, dataObj.maxVal, ticks);
+    const mmiObj = EditorUtilities.getScaleMinMaxIncr(dataObj.minVal, dataObj.maxVal,
+        ticks, Preferences.other.plausibleIncrements);
     // NOTE: and the hard-wiring to 'print' is problematic
     // Unpick:
     config.minmax = mmiObj;
@@ -162,7 +181,7 @@ export default class SilverEditor extends React.Component {
   }
   // UNPICK CONFIG ends
 
-  // ====================================
+  // ===========================================================================
 
   // UNPICK TSV
   // Converts tsv into an array of objects with 'category' and 'value' properties
@@ -345,52 +364,105 @@ export default class SilverEditor extends React.Component {
   }
   // VAL STR TO NUM ends
 
-  // MIN MAX OBJECT
-  // Passed 3 args: actual min val; actual max val; ideal number of increment-steps
-  // Returns obj with 4 properties: min, max, increment and an updated step-count
-  getScaleMinMaxIncr(minVal, maxVal, stepNo) {
-    const mmObj = {};
-    // Array of "acceptable" increments
-    const plausibleIncrs = EditorConfig.operations.plausibleIncrements;
-    let min = 0;
-    let max = 0;
-    // Min can't exceed zero; max can't be less than zero
-    minVal = Math.min(0, minVal);
-    maxVal = Math.max(0, maxVal);
-    // Do (max-min) / steps to get a raw increment
-    let incr = (maxVal - minVal) / stepNo;
-    // Increment is presumably imperfect, so loop through
-    // the array of values, raising the increment
-    // to the next acceptable value
-    for (let i = 0; i < plausibleIncrs.length; i++) {
-      const plausVal = plausibleIncrs[i];
-      if (plausVal >= incr) {
-        incr = plausVal;
-        break;
-      }
-    }
-    // From zero, lower min to next acceptable value on or below inherited min
-    while (Math.floor(min) > Math.floor(minVal)) {
-      min -= incr;
-    }
-    // From zero, raise max to next acceptable value on or above inherited max
-    while (max < maxVal) {
-      max += incr;
-    }
-    // Revise number of ticks?
-    const ticks = (max - min) / incr;
-    mmObj.min = min;
-    mmObj.max = max;
-    mmObj.increment = incr;
-    mmObj.ticks = ticks;
-    return mmObj;
+  // FIELD CONTEXT FROM TAB BAR
+  // Callback sent to the TabBar. Param is an object
+  // with 2 props: parent (string)...
+  // ...and children (array, possible empty, and currently redundant)
+  fieldContextFromTabBar(obj) {
+    // Reset reference object:
+    ConfigObject.metadata.context = obj.parent;
+    ConfigObject.metadata.subcontext = obj.child;
+    // NOTE: comm'd out call that kicks off chart draw...
+    this.updateSizes();
+    console.log(ConfigObject);
   }
-  // MIN MAX OBJECT ends
+  // FIELD CONTEXT FROM TAB BAR ends
 
-  // CATCH TAB EVENT
+  // UNPICK CONTEXTS
+  // Called from getTabBarJSX to assemble the context definitions to pass
+  // down to the TabBar component
+  unpickContexts() {
+    // Get default context and all context nodes from lookup:
+    const defaultContext = Preferences.metadata.defaults.context;
+    const defaultSubContext = Preferences.metadata.defaults.subcontext;
+    const contexts = Preferences.contexts;
+    // Result will be an array of context definitions
+    const result = [];
+    // Loop by context objects:
+    Object.keys(contexts).forEach((key) => {
+      // Exclude my comments (this needs to be deleted... or something... eventually)
+      if (key.search('SECTION') < 0) {
+        const obj = contexts[key];
+        // Init obj to return with context name
+        // (All lower case; tab bar does uppercasing)
+        const tempObj = { parent: key };
+        // Subcontexts list:
+        const children = [];
+        Object.keys(obj.default.outerbox.dimensions).forEach((val) => {
+          children.push(val);
+        });
+        // So we have an array of child names.
+        // ( Contexts with no subcontext: children = ['default'] )
+        tempObj.children = children;
+        // Flag for default hightlight on tab bar
+        tempObj.default = (key === defaultContext);
+        result.push(tempObj);
+      }
+    });
+    // Update CO with default values:
+    ConfigObject.metadata.context = defaultContext;
+    ConfigObject.metadata.subcontext = defaultSubContext;
+    return result;
+  }
+  // UNPICK CONTEXTS ends
+
+  // ===========================================================================
+  // === UNSORTED FUNCTIONS END
+  // ===========================================================================
+
+  // ===========================================================================
+  // === EVENT CATCHERS ===
+  // ===========================================================================
+  // I think I have to sort these by:
+  //  Accordion level
+  //  Data fold
+  //  Layout fold...
+
+  // ACCORDION-LEVEL EVENTS
+
+  // CATCH ACCORDION FOLD BUTTON CLICK
+  // Event-catcher for click on accordian open-fold button
+  // Resets state with updated fold open/close flag
+  catchAccordionFoldButtonClick(evt) {
+    const folds = this.state.folds;
+    const thisKey = evt.target.innerHTML.toLowerCase();
+    const thisFold = folds[thisKey];
+    // I'm only interested in opening folds that are currently closed
+    if (thisFold.open) {
+      return;
+    }
+    // Still here: I want to open a closed fold...
+    for (const key in folds) {
+      folds[key].open = (key === thisKey);
+    }
+    // Update state and re-render
+    this.setState({ folds });
+  }
+  // CATCH ACCORDION FOLD BUTTON CLICK ends
+
+  // CATCH ACCORDION RESET BUTTON CLICK
+  catchEditorResetButtonClick() {
+    // Empty text area
+    // Set strings back to default
+    // Set width and height back to default...
+  }
+
+  // DATA FOLD EVENTS
+
+  // CATCH DATA-FOLD TEXTAREA TAB EVENT
   // Called from render > textarea > keydown event to
   // pre-empt default tab-switches-focus and put a tab in data field
-  catchTabEvent(event) {
+  catchDataFoldTextAreaTabEvent(event) {
     if (event.keyCode === 9) {
       // prevent the focus loss
       event.preventDefault();
@@ -406,135 +478,41 @@ export default class SilverEditor extends React.Component {
       target.selectionStart = target.selectionEnd = start + 1;
     }
   }
-  // CATCH TAB EVENT ends
+  // CATCHDATA-FOLD TEXTAREA TAB EVENT ends
 
-  // CATCH TEXT AREA PASTE EVENT
+  // CATCHDATA-FOLD TEXTAREA PASTE EVENT
   // Listener for paste into data textarea
-  catchTextAreaPasteEvent() {
+  catchDataFoldTTextAreaPasteEvent() {
     console.log('Running text area paste-in listener, although I cannot remember what it is supposed to do...');
-    this.setDynamicSchemaVals();
   }
-  // CATCH TEXT AREA PASTE EVENT ends
+  // CATCH DATA-FOLD TEXTAREA PASTE EVENT ends
 
-  // CATCH BAR SPAN EVENT
-  // Listener to the 'recommended height' button
-  catchBarSpanEvent(event) {
-    // Get the value from the span...
-    const val = parseFloat(event.target.textContent, 10);
-    // ...and send to the input:
-    const heightEl = this.editorForm.getEditor('root.dimensions.height');
-    heightEl.setValue(val);
+  // LAYOUT EVENTS
+
+  // CATCH LAYOUT TYPE CHANGE
+  // Listener to change event on chart Type dropdown
+  catchLayoutTypeSelectChange(evt) {
+    ConfigObject.metadata.type = evt.target.value;
+    this.fieldUpdatedConfigObject();
   }
-  // CATCH BAR SPAN EVENT ends
 
-  // FIELD CONTEXT FROM TAB BAR
-  // Callback sent to the TabBar. Param is an object
-  // with 2 props: parent (string)...
-  // ...and children (array, possible empty, and currently redundant)
-  fieldContextFromTabBar(obj) {
-    // Reset reference object:
-    ConfigObject.metadata.context = obj.parent;
-    ConfigObject.metadata.subcontext = obj.child;
-    // NOTE: comm'd out call that kicks off chart draw...
-    this.updateSizes();
-    console.log(ConfigObject);
-  }
-  // FIELD CONTEXT FROM TAB BAR ends
-
-    // UNPICK CONTEXTS
-    // Called from getTabBarJSX to assemble the context definitions to pass
-    // down to the TabBar component
-    unpickContexts() {
-      // Get default context and all context nodes from lookup:
-      const defaultContext = Preferences.metadata.defaults.context;
-      const defaultSubContext = Preferences.metadata.defaults.subcontext;
-      const contexts = Preferences.contexts;
-      // Result will be an array of context definitions
-      const result = [];
-      // Loop by context objects:
-      Object.keys(contexts).forEach((key) => {
-        // Exclude my comments (this needs to be deleted... or something... eventually)
-        if (key.search('SECTION') < 0) {
-          const obj = contexts[key];
-          // Init obj to return with context name
-          // (All lower case; tab bar does uppercasing)
-          const tempObj = { parent: key };
-          // Subcontexts list:
-          const children = [];
-          Object.keys(obj.default.outerbox.dimensions).forEach((val) => {
-            children.push(val);
-          });
-          // So we have an array of child names.
-          // ( Contexts with no subcontext: children = ['default'] )
-          tempObj.children = children;
-          // Flag for default hightlight on tab bar
-          tempObj.default = (key === defaultContext);
-          result.push(tempObj);
-        }
-      });
-      // Update CO with default values:
-      ConfigObject.metadata.context = defaultContext;
-      ConfigObject.metadata.subcontext = defaultSubContext;
-      return result;
-    }
-    // UNPICK CONTEXTS ends
-
-    // CATCH RESET CLICK
-    catchResetClick() {
-      // Empty text area
-      // Set strings back to default
-      // Set width and height back to default...
-    }
-
-  // GET TAB BAR JSX
-  // Called from render to assemble the context options tab bar
-  // NOTE: I'm wrapping the tab bar in a 'header' div. This is
-  // in case I decide to add any other content...
-  getTabBarJsx() {
-    const unpickedContexts = this.unpickContexts();
-    return (
-      <div className="editor-header-wrapper">
-         <div className="chart-context-choices-div">
-          <SilverTabBar
-            tabBarDefinitions={unpickedContexts}
-            passContextToEditor={this.fieldContextFromTabBar.bind(this)}
-          />
-        </div>
-        <div className="chart-reset-wrapper">
-          <div className="silverbullet-reset-button" id="silverbullet-reset-button">
-            <p onClick={this.catchResetClick.bind(this)}>Reset</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  // GET TAB BAR JSX ends
-
-
-// CATCH TYPE CHANGE
-// Listener to change event on chart Type dropdown
-catchTypeChange(evt) {
-  ConfigObject.metadata.type = evt.target.value;
-  this.fieldUpdatedConfigObject();
-}
-
-  // CATCH SECTION CHANGE
+  // CATCH LAYOUT SECTION CHANGE
   // Listener to change event on Section dropdown
-  catchSectionChange(evt) {
+  catchLayoutSectionChange(evt) {
     ConfigObject.metadata.section = evt.target.value;
     this.fieldUpdatedConfigObject();
   }
-  // CATCH SECTION CHANGE ends
+  // CATCH LAYOUT SECTION CHANGE ends
 
-  // CATCH PANEL CHANGE
-  catchPanelChange(evt) {
+  // CATCH LAYOUT PANEL CHANGE
+  catchLayoutPanelChange(evt) {
     // Extract panel property from input id
     const targ = evt.target;
     const targetId = targ.id.split('-')[1];
     const newVal = targ.value;
     const oldVal = ConfigObject.metadata.panels[targetId];
-    // Validate...
-    if (this.validPanelProps(targetId, newVal)) {
+    // Validate (fcn in utilities module)...
+    if (EditorUtilities.validatePanelValues(targetId, newVal, ConfigObject)) {
       // If targ is 'total' input, reset max on others:
       if (targetId === 'total') {
         this.refs.number.max = newVal;
@@ -543,14 +521,15 @@ catchTypeChange(evt) {
         this.fieldUpdatedConfigObject();
       }
     } else {
+      // Reset target to previous value
       // Ideally there'd be some sort of alert...
       targ.value = oldVal;
     }
   }
-  // CATCH PANEL CHANGE ends
+  // CATCH LAYOUT PANEL CHANGE ends
 
-  // CATCH SIZE CHANGE
-  catchSizeChange(evt) {
+  // CATCH LAYOUT SIZE CHANGE
+  catchLayoutSizeChange(evt) {
     // Extract panel property from input id
     const targ = evt.target;
     const targetId = targ.id.split('-')[1];
@@ -559,33 +538,40 @@ catchTypeChange(evt) {
     // Validate...?
     console.log(`${targetId} set to ${newVal}`);
   }
-  // CATCH SIZE CHANGE ends
+  // CATCH LAYOUT SIZE CHANGE ends
 
-  validPanelProps(targetId, val) {
-    // Take a copy of the current panel properties and
-    // substitute potential new value
-    const panels = {...ConfigObject.metadata.panels};
-    for (const key in panels) {
-      if (key === targetId) {
-        panels[targetId] = val;
-      }
-    }
-    // Check validity
-    if (panels.number > panels.total) {
-      return false;
-    }
-    if (panels.total % panels.rows !== 0) {
-      return false;
-    }
-    if (panels.rows > panels.total) {
-      return false;
-    }
-    return true;
+  // CATCH LAYOUT BAR SPAN EVENT
+  // Listener to the 'recommended height' button
+  catchLayoutRecommendedHeightyEvent(event) {
+    // Get the value from the span...
+    const val = parseFloat(event.target.textContent, 10);
+    // ...and send to the input:
+    const heightEl = this.editorForm.getEditor('root.dimensions.height');
+    heightEl.setValue(val);
   }
+  // CATCH LAYOUT BAR SPAN EVENT ends
 
-  // GET SECTION SELECT
-  // Assembles style dropdown
-  getSectionSelect() {
+  // ===========================================================================
+  // === EVENT CATCHERS END ===
+  // ===========================================================================
+
+
+  // ===========================================================================
+  // === JSX CONTRUCTORS =======================================================
+  // === Functions assemble JSX structural elements
+  // ===========================================================================
+
+  // Sub-constructors ==========================================================
+  // All, I assume initially, called from makeFoldJsx
+
+  // DATA
+
+  // LAYOUT
+
+  // MAKE LAYOUT SECTION DROPDOWN
+  // Dropdown for section selection ('BR' etc)
+  // Called from makeLayoutFormJsx
+  makeLayoutSectionDropdown() {
     const sectionArray = Preferences.metadata.sections;
     const options = sectionArray.map((opt, index) => (
       <option key={index} value={opt.id}>{opt.display}</option>
@@ -603,18 +589,19 @@ catchTypeChange(evt) {
         <select className="accordion-select"
           id="accordion-section-select"
           defaultValue={defaultValue}
-          onChange={this.catchSectionChange.bind(this)}
+          onChange={this.catchLayoutSectionChange.bind(this)}
         >
           {options}
         </select>
       </p>
     );
   }
-  // GET SECTION SELECT ends
+  // MAKE LAYOUT SECTION DROPDOWN ends
 
-  // GET TYPE SELECT
-  // Assembles style dropdown
-  getTypeSelect() {
+  // MAKE LAYOUT TYPE SELECT
+  // Dropdown for chart type ('Line' etc.)
+  // Called from makeLayoutFormJsx
+  makeLayoutTypeDropdown() {
     const typeArray = Preferences.metadata.types;
     const options = typeArray.map((opt, index) => (
       <option key={index} value={opt.id}>{opt.display}</option>
@@ -632,18 +619,18 @@ catchTypeChange(evt) {
         <select className="accordion-select"
           id="accordion-type-select"
           defaultValue={defaultValue}
-          onChange={this.catchTypeChange.bind(this)}
+          onChange={this.catchLayoutTypeSelectChange.bind(this)}
         >
           {options}
         </select>
       </p>
     );
   }
-  // GET TYPE SELECT ends
+  // MAKE TYPE SELECT ends
 
-  // GET PANEL INPUTS
-  // Constructs contents of the Panels fieldset
-  getPanelInputs() {
+  // MAKE LAYOUT PANEL FIELDSET
+  // Called from makeLayoutFormJsx to construct panels fieldset
+  makeLayoutPanelFieldset() {
     // Get defaults from prefs
     const panelDefaults = Preferences.metadata.defaults.panels;
     // Update pass to config object
@@ -657,7 +644,7 @@ catchTypeChange(evt) {
           type="number" id="panel-number-input"
           defaultValue={panelDefaults.number}
           min="1" max={panelDefaults.total} ref="number"
-          onBlur={this.catchPanelChange.bind(this)}
+          onBlur={this.catchLayoutPanelChange.bind(this)}
           required
         ></input>
         </p>
@@ -667,7 +654,7 @@ catchTypeChange(evt) {
           type="number" id="panel-total-input"
           defaultValue={panelDefaults.total}
           min="1" max="8" ref="total"
-          onBlur={this.catchPanelChange.bind(this)}
+          onBlur={this.catchLayoutPanelChange.bind(this)}
           required
         ></input>
         </p>
@@ -677,7 +664,7 @@ catchTypeChange(evt) {
           type="number" id="panel-rows-input"
           defaultValue={panelDefaults.rows}
           min="1" max={panelDefaults.total} ref="rows"
-          onBlur={this.catchPanelChange.bind(this)}
+          onBlur={this.catchLayoutPanelChange.bind(this)}
           required
         ></input>
         </p>
@@ -685,14 +672,16 @@ catchTypeChange(evt) {
       </fieldset>
     );
   }
-  // GET PANEL INPUTS ends
+  // MAKE LAYOUT PANEL FIELDSET ends
 
-  // GET SIZE INPUTS
-  getSizeInputs() {
+  // MAKE LAYOUT SIZE FIELDSET
+  // Called from makeLayoutFormJsx, to construct chart size fieldset
+  makeLayoutSizeFieldset() {
     // Get defaults from prefs
     const panelDefaults = Preferences.metadata.defaults.panels;
     // Update pass to config object
-//    ConfigObject.metadata.panels = panelDefaults;
+    // NOTE:    ConfigObject.metadata.panels = panelDefaults;
+    // (what was this...?)
     return (
       <fieldset className="layout-size-fieldset">
         <legend>Size</legend>
@@ -701,7 +690,7 @@ catchTypeChange(evt) {
           <input
             type="number" id="size-width-input"
             min="50" ref="width"
-            onBlur={this.catchSizeChange.bind(this)}
+            onBlur={this.catchLayoutSizeChange.bind(this)}
             required
           ></input>
         </p>
@@ -710,27 +699,27 @@ catchTypeChange(evt) {
           <input
             type="number" id="size-height-input"
             min="50" ref="height"
-            onBlur={this.catchSizeChange.bind(this)}
+            onBlur={this.catchLayoutSizeChange.bind(this)}
             required
           ></input>
         </p>
       </fieldset>
     );
   }
-  // GET SIZE INPUTS ends
+  // MAKE LAYOUT SIZE FIELDSET ends
 
-
-  // GET LAYOUT FORM JSX
-  // Called from makeFoldJsx to construct the JSX definitions for the Layout fold
-  getLayoutFormJsx() {
+  // MAKE LAYOUT FORM JSX
+  // Main Layout form constructor, called from makeFoldJsx
+  // Calls sub-functions to construct individual elements and clusters
+  makeLayoutFormJsx() {
     // Section dropdown
-    const sectionSelect = this.getSectionSelect();
+    const sectionSelect = this.makeLayoutSectionDropdown();
     // Chart type dropdown
-    const typeSelect = this.getTypeSelect();
+    const typeSelect = this.makeLayoutTypeDropdown();
     // Panels inputs
-    const panelFieldSet = this.getPanelInputs();
-    // Size inputs
-    const sizeFieldSet = this.getSizeInputs();
+    const panelFieldSet = this.makeLayoutPanelFieldset();
+    // Size inputMAKE
+    const sizeFieldSet = this.makeLayoutSizeFieldset();
     //  ...and all the rest of it...
     // I don't think I need the onChange on the form...
     // onChange={this.catchLayoutFormChange.bind(this)}
@@ -743,12 +732,19 @@ catchTypeChange(evt) {
       </form>
     );
   }
-  // GET FORM JSX ends
+  // MAKE LAYOUT FORM JSX ends
+
+  // OTHER FORMS TO COME...
+
+  // Main constructors =========================================================
+  // Fold constructor
+  // Header constructor
 
   // MAKE FOLD JSX
-  // Builds accordian 'fold' (LI) and contents
-  // Arg is a string referring to an element defined, above, in props.folds
-  // In theory, this function will serve as a triage nurse for any 'fold'...
+  // Called from RENDER to build accordian 'fold' (LI) and contents
+  // Arg is a string referring to an element defined in props.folds
+  // In theory, this function will serve as a triage nurse for any 'fold',
+  // calling a sub-constructor (above) to build the particular FORM...
   makeFoldJsx(fName) {
     const propFold = this.props.folds[fName];
     const stateFold = this.state.folds[fName];
@@ -767,7 +763,7 @@ catchTypeChange(evt) {
         foldContent = <span>Body of ${fName}</span>;
         break;
       case 'layout':
-        foldContent = this.getLayoutFormJsx();
+        foldContent = this.makeLayoutFormJsx();
         break;
       case 'scales':
         foldContent = <span>Body of ${fName}</span>;
@@ -786,7 +782,7 @@ catchTypeChange(evt) {
     return (
       <li className={liClass} key={fName}>
         <div className={headClass}>
-          <div onClick={this.catchFoldButtonClick.bind(this)}>{bDisplay}</div>
+          <div onClick={this.catchAccordionFoldButtonClick.bind(this)}>{bDisplay}</div>
           <span className="accordion-fold-head-span">{defText}</span>
         </div>
         <div className="accordion-fold-body">{foldContent}</div>
@@ -795,29 +791,36 @@ catchTypeChange(evt) {
   }
   // MAKE FOLD JSX ends
 
-  // CATCH FOLD BUTTON CLICK
-  // Event-catcher for click on accordian fold-open button
-  // Resets state with updated fold open/close flab
-  catchFoldButtonClick(evt) {
-    const folds = this.state.folds;
-    const thisKey = evt.target.innerHTML.toLowerCase();
-    const thisFold = folds[thisKey];
-    // I'm only interested in opening folds that are currently closed
-    if (thisFold.open) {
-      return;
-    }
-    // Still here: I want to open a closed fold...
-    for (const key in folds) {
-      folds[key].open = (key === thisKey);
-    }
-    // Update state and re-render
-    this.setState({ folds });
+  // MAKE HEADER JSX
+  // Called from render to assemble the context options tab bar
+  // NOTE: I'm wrapping the tab bar in a 'header' div. This is
+  // in case I decide to add any other content...
+  makeHeaderJsx() {
+    const unpickedContexts = this.unpickContexts();
+    return (
+      <div className="editor-header-wrapper">
+         <div className="chart-context-choices-div">
+          <SilverTabBar
+            tabBarDefinitions={unpickedContexts}
+            passContextToEditor={this.fieldContextFromTabBar.bind(this)}
+          />
+        </div>
+        <div className="chart-reset-wrapper">
+          <div className="silverbullet-reset-button" id="silverbullet-reset-button">
+            <p onClick={this.catchEditorResetButtonClick.bind(this)}>Reset</p>
+          </div>
+        </div>
+      </div>
+    );
   }
-  // CATCH FOLD BUTTON CLICK ends
+  // MAKE HEADER JSX ends
 
+  // ===========================================================================
+  // === EDITOR/ACCORDION/FOLD CONSTRUCTORS end ===
+  // ===========================================================================
+
+  // ===========================================================================
   // RENDER
-  // editorHeaderStructure is currently the context tab bar
-  // remainder is the json-editor form
   render() {
     // Accordion structure...
     // NOTE: I could derive the fold ID names, below, from props definitions,
@@ -825,8 +828,10 @@ catchTypeChange(evt) {
     const dataFoldJsx = this.makeFoldJsx('data');
     const layoutFoldJsx = this.makeFoldJsx('layout');
     const scalesFoldJsx = this.makeFoldJsx('scales');
-    // Tab bar (dependent component) at top of chart div, for context choices:
-    const tabBarJsx = this.getTabBarJsx();
+    // Header stretches across entire Sibyl window and contains
+    // - Tab bar (dependent component) for context choices
+    // - Reset button (for now, at least...)
+    const headerJsx = this.makeHeaderJsx();
     return (
       <div className="silverbullet-editor-wrapper">
         <div className="editor-outer-wrapper">
@@ -836,7 +841,7 @@ catchTypeChange(evt) {
             {scalesFoldJsx}
           </ul>
         </div>
-        {tabBarJsx}
+        {headerJsx}
       </div>
     );
   }
