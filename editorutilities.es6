@@ -13,10 +13,12 @@
 // Checks that any value entered in one of the panel inputs is
 // consistent with existing values. Args are: id of the input, its new value,
 // and the config object
+// NOTE: this needs more work. Among other things, if input is 'total' I
+// ought always be able to reset it, but 'number' and 'row' should adapt
+// if inconsistent...
 export function validatePanelValues(targetId, val, configObject) {
   // Clone current CO panel properties & substitute potential new value
-  const panels = {...configObject.metadata.panels};
-  // const panels = configObject.metadata.panels;
+  const panels = Object.assign({}, configObject.metadata.panels);
   for (const key in panels) {
     if (key === targetId) {
       panels[targetId] = val;
@@ -80,7 +82,6 @@ export function getScaleMinMaxIncr(minVal, maxVal, stepNo, plausibleIncrs) {
   return mmObj;
 }
 // MIN MAX OBJECT ends
-
 
 
 // GET FORM JSX

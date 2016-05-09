@@ -3,9 +3,11 @@ import React from 'react';
 // Tab bar component:
 import SilverTabBar from '@economist/component-silver-tab-bar';
 // The default config object, to be 'sharpened up' and passing down the tree...
-import ConfigObject from './assets/new_default_config_object.json';
-// Single preferences file
-import Preferences from './assets/preferences.json';
+import ConfigObject from './assets/default_config_object.json';
+// Default preferences (complete set of style definitions):
+import DefaultPreferences from './assets/default_preferences.json';
+// Context-specific preferences:
+import ContextPreferences from './assets/context_preferences.json';
 // Utilities module
 import * as EditorUtilities from './editorutilities';
 
@@ -58,7 +60,6 @@ export default class SilverEditor extends React.Component {
   // COMPONENT DID MOUNT
   componentDidMount() {
     this.updateSizes();
-    console.log(ConfigObject);
   }
   // COMPONENT DID MOUNT ends
 
@@ -85,21 +86,34 @@ export default class SilverEditor extends React.Component {
     const context = metadata.context;
     const subcontext = metadata.subcontext;
     const section = metadata.section;
-    // Isolate the context node:
-    const contextNode = Preferences.contexts[context];
+    // Comm'd out for now, so we can work...
+    const subcontextNode = DefaultPreferences.background.outerbox.dimensions;
+
+    // I want a chain...
+    const chain = [ 'background', 'outerbox', 'dimensions' ];
+    const myNode = this.findPreferencesNode(context, section, chain);
+    console.log(myNode);
+    //
+    // const myNode = DefaultPreferences.background.outerbox.dimensions;
+    // We always want to look (a) in defaults
+    /*
+    // By default, get sizes from default preferences:
+    const contextNode = DefaultPreferences.outerbox.dimensions;
+    // But is there a context node?
     // Is there a section-specific node in this context?
     // If not, use default...
     let sectionNode = contextNode[section];
-    if (sectionNode === undefined) {
+    if (typeof sectionNode === 'undefined') {
       sectionNode = contextNode.default;
     }
     // Does the section define subcontexts? If not, use default...
     // (In practice, I think we'd always use 'default' for defined
     // subcontexts)
     let subcontextNode = sectionNode.outerbox.dimensions[subcontext];
-    if (subcontextNode === undefined) {
+    if (typeof subcontextNode === 'undefined') {
       subcontextNode = sectionNode.outerbox.dimensions.default;
     }
+    */
     // Update inputs:
     this.refs.width.value = subcontextNode.width;
     this.refs.height.value = subcontextNode.height;
@@ -109,20 +123,78 @@ export default class SilverEditor extends React.Component {
   }
   // UPDATE SIZES ends
 
-  validateConfigObject() {
-    console.log(ConfigObject.metadata);
+  // FIND PREFERENCES NODE
+  // Function hopefully (!) finds a specific context/section node in
+  // the preferences lookup file. If there's no specific node, it will
+  // (again, hopefully!) return a default
+  // Args are: context id; section id; and an array of subnodes that
+  // constitute a sort of 'chain' down to the property I'm looking for...
+  // This chain structure must be consistent across all prefs contexts,
+  // sections, etc.
+  findPreferencesNode(context, section, chain) {
+    // Isolate the context node (eg 'print'):
+    // NOTE: do I need to verify this assignment?
+    // I suspect not: if it fails I've hit an iceberg anyway
+    console.log("Playing about in findPreferencesNode (line 138), looking for the right node...")
+    const contextNode = DefaultPreferences.contexts[context];
+    // Now look in the context node for a section-specific sub-node
+    let sectionNode = contextNode.section;
+    if (typeof sectionNode === 'undefined') {
+      // If no section-specific sub-node, use the context's 'default' section
+      sectionNode = contextNode.default;
+      // The assumption has, I think, to be that the specified node exists
+      // in context.default... but who knows?
+    }
+    // So I'm down a step, in either context.default or context.section
+    // Remember: the working assumption is that whatever I'm looking for
+    // exists in the context.default node...
+    // Whatever, let,s chase down...
+    for (let link = 0; link < chain.length; link++) {
+      sectionNode = sectionNode[chain[link]];
+      // if (spec === 0) {
+      //   const fallbackNode = sectionNode;
+      // }
+    }
+    // I think I'm missing a step: if I can't find the specified node inside
+    // the context.section node, I should look for context.section.default!
+    // Fingers crossed!
+    return sectionNode;
+  }
+
+  // ASSEMBLE CONFIG OBJECT
+  // Placeholder for config object validation, when/if needed...
+  // Also does assembling of 'under-the-hood' properties
+  assembleConfigObject() {
+    // We need to know:
+    const section = ConfigObject.metadata.section;
+    const context = ConfigObject.metadata.context;
+    // Margins
+    // Where do I get margins from? Function should, in theory, return a node
+    // where I can find what I want, either specific or default...
+    // Args 1 & 2 are context and section; subsequent arguments will be 'spread'
+    // into an array leading to a specific sub-node...
+    const margins = this.findPreferencesNode(context, section, ['outerbox', 'margins']);
+    ConfigObject.background.margins = margins;
+    //
+    // Next up: background shapes...
+
+    // ...and, assuming that nothing's gone wrong (not that I'm testing yet!)...
     return true;
   }
+  // VALIDATE CONFIG OBJECT ends
 
   // FIELD UPDATED CONFIG OBJECT
   // Called from ALL form elements' event listeners...
   // ...if value is valid. Individual listeners have
   // updated the CO. In theory it is valid, but I may want
   // to do subsequent checks before tossing it up to Sibyl
+  // NOTE: name of this function is wrong: do better!!! *** ***
   fieldUpdatedConfigObject() {
-    this.updateSizes()
-    if  (this.validateConfigObject()) {
-      const config = {...ConfigObject};
+    this.updateSizes();
+    if (this.assembleConfigObject()) {
+      // Decouple:
+      const config = Object.assign({}, ConfigObject);
+      // ...and dispatch the CO back to Sibyl...
       this.props.passUpdatedConfig(config);
     }
   }
@@ -135,7 +207,6 @@ export default class SilverEditor extends React.Component {
     const dataObj = this.unpickTsv(editorVals.data);
     // Check validity:
     if (!dataObj.isValid) {
-      console.log(dataObj.validityMsg);
       return config;
     }
     // So dataObj yields various properties that we need.
@@ -147,7 +218,7 @@ export default class SilverEditor extends React.Component {
     // AND PROBABLY IN THE WRONG PLACE -- MOVES DOWN TO ChartWrapper, or something...
     const ticks = contextNode.general.ticks;
     const mmiObj = EditorUtilities.getScaleMinMaxIncr(dataObj.minVal, dataObj.maxVal,
-        ticks, Preferences.other.plausibleIncrements);
+        ticks, DefaultPreferences.other.plausibleIncrements);
     // NOTE: and the hard-wiring to 'print' is problematic
     // Unpick:
     config.minmax = mmiObj;
@@ -383,16 +454,15 @@ export default class SilverEditor extends React.Component {
   // down to the TabBar component
   unpickContexts() {
     // Get default context and all context nodes from lookup:
-    const defaultContext = Preferences.metadata.defaults.context;
-    const defaultSubContext = Preferences.metadata.defaults.subcontext;
-    const contexts = Preferences.contexts;
+    const defaultContext = DefaultPreferences.metadata.defaults.context;
+    const defaultSubContext = DefaultPreferences.metadata.defaults.subcontext;
     // Result will be an array of context definitions
     const result = [];
     // Loop by context objects:
-    Object.keys(contexts).forEach((key) => {
+    Object.keys(ContextPreferences).forEach((key) => {
       // Exclude my comments (this needs to be deleted... or something... eventually)
-      if (key.search('SECTION') < 0) {
-        const obj = contexts[key];
+      if (key.search('__') < 0) {
+        const obj = ContextPreferences[key];
         // Init obj to return with context name
         // (All lower case; tab bar does uppercasing)
         const tempObj = { parent: key };
@@ -572,11 +642,11 @@ export default class SilverEditor extends React.Component {
   // Dropdown for section selection ('BR' etc)
   // Called from makeLayoutFormJsx
   makeLayoutSectionDropdown() {
-    const sectionArray = Preferences.metadata.sections;
+    const sectionArray = DefaultPreferences.metadata.sections;
     const options = sectionArray.map((opt, index) => (
       <option key={index} value={opt.id}>{opt.display}</option>
     ));
-    const defaultValue = Preferences.metadata.defaults.section;
+    const defaultValue = DefaultPreferences.metadata.defaults.section;
     // Update the config object:
     ConfigObject.metadata.section = defaultValue;
     return (
@@ -602,11 +672,11 @@ export default class SilverEditor extends React.Component {
   // Dropdown for chart type ('Line' etc.)
   // Called from makeLayoutFormJsx
   makeLayoutTypeDropdown() {
-    const typeArray = Preferences.metadata.types;
+    const typeArray = DefaultPreferences.metadata.types;
     const options = typeArray.map((opt, index) => (
       <option key={index} value={opt.id}>{opt.display}</option>
     ));
-    const defaultValue = Preferences.metadata.defaults.type;
+    const defaultValue = DefaultPreferences.metadata.defaults.type;
     // Update the config object:
     ConfigObject.metadata.type = defaultValue;
     return (
@@ -632,7 +702,7 @@ export default class SilverEditor extends React.Component {
   // Called from makeLayoutFormJsx to construct panels fieldset
   makeLayoutPanelFieldset() {
     // Get defaults from prefs
-    const panelDefaults = Preferences.metadata.defaults.panels;
+    const panelDefaults = DefaultPreferences.metadata.defaults.panels;
     // Update pass to config object
     ConfigObject.metadata.panels = panelDefaults;
     return (
@@ -678,7 +748,7 @@ export default class SilverEditor extends React.Component {
   // Called from makeLayoutFormJsx, to construct chart size fieldset
   makeLayoutSizeFieldset() {
     // Get defaults from prefs
-    const panelDefaults = Preferences.metadata.defaults.panels;
+    const panelDefaults = DefaultPreferences.metadata.defaults.panels;
     // Update pass to config object
     // NOTE:    ConfigObject.metadata.panels = panelDefaults;
     // (what was this...?)
