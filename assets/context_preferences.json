@@ -4,28 +4,29 @@
     "display": "Print",
     "__PRINT-DEFAULT": "Non-section-specific print properties",
     "default": {
-      "outerbox": {
-        "dimensions": {
-          "narrow": {"display": "Narrow", "width": 160, "height": 155},
-          "medium": {"display": "Medium", "width": 320, "height": 155},
-          "wide": {"display": "Wide", "width": 510, "height": 155}
-        }
+      "background": {
+        "outerbox": {
+          "dimensions": {
+            "narrow": {"display": "Narrow", "width": 160, "height": 155, "default": true},
+            "medium": {"display": "Medium", "width": 320, "height": 155, "default": false},
+            "wide": {"display": "Wide", "width": 510, "height": 155, "default": false}
+          }
+        },
+        "shapes": {}
       }
     },
     "__PRINT-LEADER": "Leader",
     "ld": {
-      "outerbox": {
-        "dimensions": {
-          "default": {"display": "Default", "width": 117, "height": 87},
-        },
-        "margins":{}
-      },
       "background": {
-        "shapes": [
-          {},
-          {"width": "3px", "height": "12px"},
-          {}
-        ]
+        "outerbox": {
+          "dimensions": {
+            "default": {"display": "Default", "width": 117, "height": 87, "default": true},
+          },
+          "margins":{}
+        },
+        "shapes": {
+          "bb2": {"width": "3px", "height": "12px"}
+        }
       }
     }
   },
@@ -34,52 +35,46 @@
   "espresso": {
     "display": "Espresso",
     "default": {
-      "outerbox": {
-        "dimensions": {
-          "default": {"width": 160, "height": 155},
-        },
-        "margins": {}
-      },
       "background": {
-        "shapes": {
-          "bb1": "This has an overwriting fill"
-        }
+        "outerbox": {
+          "dimensions": {
+            "default": {"display": "Default", "width": 160, "height": 155, "default": true},
+          },
+          "margins": {}
+        },
+        "shapes": {}
       }
-    },
+    }
   },
 
   "__WEB": "WEB PROPERTIES",
   "web": {
     "display": "Web",
     "default": {
-      "outerbox": {
-        "dimensions": {
-          "default": {"width": 160, "height": 155},
-        },
-        "margins": {}
-      },
       "background": {
-        "shapes": {
-          "bb1": "This has an overwriting fill"
-        }
+        "outerbox": {
+          "dimensions": {
+            "default": {"display": "Default", "width": 160, "height": 155, "default": true},
+          },
+          "margins": {}
+        },
+        "shapes": {}
       }
-    },
+    }
   },
 
   "__APP": "APP PROPERTIES",
   "app": {
     "display": "App",
     "default": {
-      "outerbox": {
-        "dimensions": {
-          "default": {"width": 160, "height": 155},
-        },
-        "margins": {"left": 6, "right": 6, "top": 6, "bottom": 6}
-      },
       "background": {
-        "shapes": {
-          "bb1": "This has an overwriting fill"
-        }
+        "outerbox": {
+          "dimensions": {
+            "default": {"width": 160, "height": 155},
+          },
+          "margins": {}
+        },
+        "shapes": {}
       }
     }
   }

@@ -86,13 +86,14 @@ export default class SilverEditor extends React.Component {
     const context = metadata.context;
     const subcontext = metadata.subcontext;
     const section = metadata.section;
-    // Comm'd out for now, so we can work...
-    const subcontextNode = DefaultPreferences.background.outerbox.dimensions;
+
+    // But subcontext may have to change if I'm changing section
+    // (eg from BR:narrow/medium/wide to LD:default... or vice versa)
 
     // I want a chain...
     const chain = [ 'background', 'outerbox', 'dimensions' ];
     const myNode = this.findPreferencesNode(context, section, chain);
-    console.log(myNode);
+    const subcontextNode = myNode[subcontext];
     //
     // const myNode = DefaultPreferences.background.outerbox.dimensions;
     // We always want to look (a) in defaults
@@ -124,42 +125,64 @@ export default class SilverEditor extends React.Component {
   // UPDATE SIZES ends
 
   // FIND PREFERENCES NODE
-  // Function hopefully (!) finds a specific context/section node in
-  // the preferences lookup file. If there's no specific node, it will
-  // (again, hopefully!) return a default
+  // Function returns a complete preferences node. It clones the (hopefully
+  // complete!) default definition as its base. Then it scrabbles around,
+  // by context and section, for a specific node. If a specific node is
+  // found, it overwrites the default with whatever properties exist.
   // Args are: context id; section id; and an array of subnodes that
-  // constitute a sort of 'chain' down to the property I'm looking for...
-  // This chain structure must be consistent across all prefs contexts,
-  // sections, etc.
+  // constitute a sort of 'chain' down to the node I'm looking for...
+  // NOTE: this chain structure must be consistent across all prefs contexts,
+  // sections, etc. And the 'end-of-chain' node must exist in the
+  // default prefs...
   findPreferencesNode(context, section, chain) {
-    // Isolate the context node (eg 'print'):
-    // NOTE: do I need to verify this assignment?
-    // I suspect not: if it fails I've hit an iceberg anyway
-    console.log("Playing about in findPreferencesNode (line 138), looking for the right node...")
-    const contextNode = DefaultPreferences.contexts[context];
-    // Now look in the context node for a section-specific sub-node
-    let sectionNode = contextNode.section;
-    if (typeof sectionNode === 'undefined') {
-      // If no section-specific sub-node, use the context's 'default' section
-      sectionNode = contextNode.default;
-      // The assumption has, I think, to be that the specified node exists
-      // in context.default... but who knows?
-    }
-    // So I'm down a step, in either context.default or context.section
-    // Remember: the working assumption is that whatever I'm looking for
-    // exists in the context.default node...
-    // Whatever, let,s chase down...
+    // First, clone the node in default preferences:
+    let defaultNode = DefaultPreferences;
+    // Drill down:
     for (let link = 0; link < chain.length; link++) {
-      sectionNode = sectionNode[chain[link]];
-      // if (spec === 0) {
-      //   const fallbackNode = sectionNode;
-      // }
+      defaultNode = defaultNode[chain[link]];
+      // In case of error:
+      if (typeof defaultNode === 'undefined') {
+        return defaultNode;
+      }
     }
-    // I think I'm missing a step: if I can't find the specified node inside
-    // the context.section node, I should look for context.section.default!
-    // Fingers crossed!
-    return sectionNode;
+    // Now clone the default target node:
+    const returnNode = Object.assign({}, defaultNode);
+    // That's the complete default node which (in theory at least!)
+    // includes all the properties that could exist...
+    // Now: are there any specific context/section overwrites?
+    const contextNode = ContextPreferences[context];
+    if (typeof contextNode === 'undefined') {
+      // No specific context definition found (shouldn't happen, but still...)
+      return returnNode;
+    }
+    // Now narrow context down to section:
+    let specificNode = contextNode[section];
+    if (typeof specificNode === 'undefined') {
+      // No specific section node: use default
+      specificNode = contextNode.default;
+    }
+    // Now look down the chain. If it breaks, return the default node
+    for (let link = 0; link < chain.length; link++) {
+      specificNode = specificNode[chain[link]];
+      if (typeof specificNode === 'undefined') {
+        return returnNode;
+      }
+    }
+    // If I"m still here, I've isolated a specific target node.
+    // Any properties found therein overwrite the defaults
+//    if (typeof returnNode.length === 'undefined') {
+      // Node is an object
+    Object.assign(returnNode, specificNode);
+//    } else if (returnNode.length === specificNode.length) {
+      // Node is an array. If they (crudely) match, overwrite each
+//      for (let iii = 0; iii < returnNode.length; iii++) {
+//        Object.assign(returnNode[iii], specificNode[iii]);
+//      }
+//    }
+    return returnNode;
   }
+
+  // ======================
 
   // ASSEMBLE CONFIG OBJECT
   // Placeholder for config object validation, when/if needed...
@@ -173,15 +196,25 @@ export default class SilverEditor extends React.Component {
     // where I can find what I want, either specific or default...
     // Args 1 & 2 are context and section; subsequent arguments will be 'spread'
     // into an array leading to a specific sub-node...
-    const margins = this.findPreferencesNode(context, section, ['outerbox', 'margins']);
+    const margins = this.findPreferencesNode(context, section, [ 'background', 'outerbox', 'margins' ]);
     ConfigObject.background.margins = margins;
     //
     // Next up: background shapes...
-
+    // List is defined in defaults
+    const shapeKeys = Object.keys(DefaultPreferences.background.shapes);
+    const shapeArray = [];
+    for (let iii = 0; iii < shapeKeys.length; iii++) {
+      const oneShape = this.findPreferencesNode(context, section, [ 'background', 'shapes', shapeKeys[iii] ]);
+      shapeArray.push(oneShape);
+    }
+    ConfigObject.background.shapes = shapeArray;
+    //
+    // Panels? Layout is already in metadata; but so far nothing on actual appearance...
+    // ...which I'll leave for now, but would be context-based
     // ...and, assuming that nothing's gone wrong (not that I'm testing yet!)...
     return true;
   }
-  // VALIDATE CONFIG OBJECT ends
+  // ASSEMBLE CONFIG OBJECT ends
 
   // FIELD UPDATED CONFIG OBJECT
   // Called from ALL form elements' event listeners...
@@ -445,7 +478,6 @@ export default class SilverEditor extends React.Component {
     ConfigObject.metadata.subcontext = obj.child;
     // NOTE: comm'd out call that kicks off chart draw...
     this.updateSizes();
-    console.log(ConfigObject);
   }
   // FIELD CONTEXT FROM TAB BAR ends
 
@@ -468,7 +500,7 @@ export default class SilverEditor extends React.Component {
         const tempObj = { parent: key };
         // Subcontexts list:
         const children = [];
-        Object.keys(obj.default.outerbox.dimensions).forEach((val) => {
+        Object.keys(obj.default.background.outerbox.dimensions).forEach((val) => {
           children.push(val);
         });
         // So we have an array of child names.
@@ -552,8 +584,8 @@ export default class SilverEditor extends React.Component {
 
   // CATCHDATA-FOLD TEXTAREA PASTE EVENT
   // Listener for paste into data textarea
-  catchDataFoldTTextAreaPasteEvent() {
-    console.log('Running text area paste-in listener, although I cannot remember what it is supposed to do...');
+  catchDataFoldTextAreaPasteEvent() {
+    // console.log('Running text area paste-in listener, although I cannot remember what it is supposed to do...');
   }
   // CATCH DATA-FOLD TEXTAREA PASTE EVENT ends
 
@@ -569,7 +601,21 @@ export default class SilverEditor extends React.Component {
   // CATCH LAYOUT SECTION CHANGE
   // Listener to change event on Section dropdown
   catchLayoutSectionChange(evt) {
-    ConfigObject.metadata.section = evt.target.value;
+    const newSection = evt.target.value;
+    ConfigObject.metadata.section = newSection;
+    // But I also need to reset subcontext to default
+    // Array sets chain to look...
+    const chain = [ 'background', 'outerbox', 'dimensions' ];
+    const sectionNode = this.findPreferencesNode(ConfigObject.metadata.context, newSection, chain);
+    // Find default subcontext (width) node:
+    let defaultStr = 'default';
+    Object.keys(sectionNode).map((key) => {
+      if (sectionNode[key].default) {
+        defaultStr = key;
+      }
+    });
+    ConfigObject.metadata.subcontext = defaultStr;
+    // for (let subC in sectionNode)
     this.fieldUpdatedConfigObject();
   }
   // CATCH LAYOUT SECTION CHANGE ends
@@ -604,9 +650,8 @@ export default class SilverEditor extends React.Component {
     const targ = evt.target;
     const targetId = targ.id.split('-')[1];
     const newVal = targ.value;
-    // const oldVal = ConfigObject.metadata.panels[targetId];
     // Validate...?
-    console.log(`${targetId} set to ${newVal}`);
+    console.log(`${targetId.toUpperCase()} set to ${newVal}... am I doing anything with this?`);
   }
   // CATCH LAYOUT SIZE CHANGE ends
 

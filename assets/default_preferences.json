@@ -3,11 +3,13 @@
   "_BACKGROUND": "",
   "background": {
     "outerbox": {
-      "dimensions": {"width": 160, "height": 155},
+      "dimensions": {
+        "default": {"display": "Default", "width": 117, "height": 87, "default": true}
+      },
       "margins": {"left": 6, "right": 6, "top": 6, "bottom": 6}
     },
-    "shapes": [
-      {
+    "shapes": {
+      "bb1": {
         "name": "Main background box",
         "note": "This element MUST exist, set to 100% width and height...",
         "shape": "rect",
@@ -20,7 +22,7 @@
         "adjustable": {"height": true, "width": true},
         "fill": "#D5E4EA"
       },
-      {
+      "bb2": {
         "name": "Sub-background box (red flash)",
         "note": "Size change for Print.LD, at least",
         "shape": "rect",
@@ -33,7 +35,7 @@
         "adjustable": {"height": false, "width": false},
         "fill": "#FF0000"
       },
-      {
+      "bb3": {
         "name": "Background box: red line at top",
         "note": "Setting display property to false SHOULD (but doesn't yet) cause element not to display",
         "shape": "rect",
@@ -46,7 +48,7 @@
         "adjustable": {"height": false, "width": true},
         "fill": "#FF0000"
       }
-    ],
+    },
     "strings": {},
     "panels": {},
   },
