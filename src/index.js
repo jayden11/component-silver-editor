@@ -43,7 +43,12 @@ export default class SilverEditor extends React.Component {
         scales: { iden: 'scales', display: 'Scales', defaultText: 'Chart scales',
           valid: false, open: false },
       },
-      passUpdatedConfig: Function.prototype,
+      passUpdatedConfig: (evt) => {
+        /* eslint-disable no-console */
+        // So we can see what we're tossing out of the basket:
+        console.log(evt.background.outerbox);
+        /* eslint-enable */
+      },
     };
   }
 
@@ -151,13 +156,17 @@ export default class SilverEditor extends React.Component {
     let defaultNode = DefaultPreferences;
     // Drill down:
     for (let link = 0; link < chain.length; link++) {
-      defaultNode = defaultNode[chain[link]];
+      const testNode = defaultNode[chain[link]];
       // In case of error:
-      if (typeof defaultNode === 'undefined') {
+      if (typeof testNode === 'undefined') {
         return defaultNode;
       }
+      // Still here?
+      defaultNode = defaultNode[chain[link]];
     }
-    // Now clone the default target node:
+    // So now (in theory, at least) defaultNode is the target node
+    // in the default preferences...
+    // Clone it:
     const returnNode = Object.assign({}, defaultNode);
     // That's the complete default node which (in theory at least!)
     // includes all the properties that could exist...
@@ -175,10 +184,11 @@ export default class SilverEditor extends React.Component {
     }
     // Now look down the chain. If it breaks, return the default node
     for (let link = 0; link < chain.length; link++) {
-      specificNode = specificNode[chain[link]];
-      if (typeof specificNode === 'undefined') {
+      const testNode = specificNode[chain[link]];
+      if (typeof testNode === 'undefined') {
         return returnNode;
       }
+      specificNode = specificNode[chain[link]];
     }
     // If I"m still here, I've isolated a specific target node.
     // Any properties found therein overwrite the defaults
@@ -385,16 +395,14 @@ export default class SilverEditor extends React.Component {
     const chain = [ 'background', 'outerbox', 'dimensions' ];
     const sectionNode = this.findPreferencesNode(ConfigObject.metadata.platform, newSection, chain);
     // Find default subplatform (width) node:
-    // let defaultStr = 'default';
-    // NOTE: Revisit this...
-    let defaultStr = Object.keys(sectionNode).map((key) => {
+    let defaultStr = 'default';
+    // NOTE: is there a better way of doing this?
+    for (const key in sectionNode) {
       if (sectionNode[key].default) {
         defaultStr = key;
       }
-      return defaultStr;
-    });
+    }
     ConfigObject.metadata.subplatform = defaultStr;
-    // for (let subC in sectionNode)
     this.fieldUpdatedConfigObject();
   }
   // HANDLE LAYOUT SECTION CHANGE ends
