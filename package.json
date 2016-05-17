@@ -1,34 +1,93 @@
 {
   "name": "@economist/component-silver-editor",
-  "version": "1.0.0",
+  "version": "0.0.0-development",
   "description": "User input elements for Silver Bullet",
-  "author": "The Economist (http://economist.com)",
+  "homepage": "https://github.com/economist-components/component-silver-editor",
+  "bugs": {
+    "url": "https://github.com/economist-components/component-silver-editor/issues"
+  },
   "license": "MIT",
+  "author": "The Economist (http://economist.com)",
+  "files": [
+    "assets/*",
+    "lib/*"
+  ],
+  "main": "lib/index.js",
+  "style": "lib/index.css",
+  "example": "lib/example.js",
+  "examplestyle": "lib/example.css",
+  "directories": {
+    "lib": "lib",
+    "site": "site",
+    "src": "src",
+    "test": "test"
+  },
   "repository": {
     "type": "git",
-    "url": "git@github.com:the-economist-editorial/component-silver-editor.git"
+    "url": "git+ssh://git@github.com/the-economist-editorial/component-silver-editor.git"
   },
-  "homepage": "https://github.com/the-economist-editorial/component-silver-editor",
-  "bugs": {
-    "url": "https://github.com/the-economist-editorial/component-silver-editor/issues"
+  "scripts": {
+    "access": "npm-run-all --parallel access:*",
+    "access:public": "npm access public $npm_package_name || true",
+    "access:sudo": "npm access grant read-write economist:read-write-all $npm_package_name || true",
+    "build": "npm-run-all --parallel build:*",
+    "prebuild:css": "mkdir -p $npm_package_directories_lib",
+    "build:css": "cp $npm_package_directories_src/*.css $npm_package_directories_lib",
+    "build:js": "babel $npm_package_directories_src -d $npm_package_directories_lib --source-maps inline",
+    "predoc": "mkdir -p $npm_package_directories_site",
+    "doc": "npm-run-all --parallel doc:*",
+    "doc:assets": "npm-assets $npm_package_directories_site",
+    "doc:css": "postcss $npm_package_config_doc_css_options -o $npm_package_directories_site/bundle.css $npm_package_directories_src/example.css",
+    "doc:html": "hbs -D package.json -H @economist/doc-pack -o $npm_package_directories_site $npm_package_config_doc_html_files",
+    "doc:js": "browserify $npm_package_config_doc_js_options $npm_package_directories_test/*.js -o $npm_package_directories_site/bundle.js",
+    "lint": "npm-run-all --parallel lint:*",
+    "lint:css": "stylelint $npm_package_directories_src/*.css",
+    "lint:js": "eslint --ignore-path .gitignore .",
+    "prepages": "npm run doc",
+    "pages": "git-directory-deploy --directory $npm_package_directories_site --branch gh-pages",
+    "provision": "provision-react-component",
+    "prepublish": "npm run build",
+    "postpublish": "npm run access",
+    "semantic-release": "semantic-release pre || exit 0; npm publish && semantic-release post",
+    "start": "npm run watch",
+    "pretest": "npm run lint && npm run doc",
+    "test": "karma start",
+    "posttest": "lcov-result-merger 'coverage/**/lcov.info' | coveralls; true",
+    "watch": "npm-run-all --parallel watch:*",
+    "prewatch:doc": "npm run predoc",
+    "watch:doc": "npm-run-all --parallel watch:doc:*",
+    "watch:doc:assets": "npm run doc:assets",
+    "watch:doc:css": "npm run doc:css -- --watch",
+    "watch:doc:html": "npm run doc:html -- --watch",
+    "watch:doc:js": "watchify $npm_package_config_doc_js_options $npm_package_directories_test/*.js -o $npm_package_directories_site/bundle.js",
+    "prewatch:serve": "while [ ! -f site/index.html ]; do sleep 1; done",
+    "watch:serve": "live-server site/ --wait 500"
   },
-  "main": "index.js",
-  "files": [
-    "*.js",
-    "*.css",
-    "assets/*",
-    "!karma.conf.js",
-    "!testbundle.js"
-  ],
-  "browserify": {
-    "transform": [
-      "babelify"
-    ]
+  "config": {
+    "doc": {
+      "js": {
+        "options": "-d -t babelify -x react/addons -x react/lib/ReactContext -x react/lib/ExecutionEnvironment -r react -r react-dom -r ./src/example.js:example"
+      },
+      "html": {
+        "files": "@economist/doc-pack/templates/index.hbs @economist/doc-pack/templates/standalone.hbs"
+      },
+      "css": {
+        "options": "-u postcss-import -u postcss-url -u postcss-cssnext -u postcss-reporter"
+      }
+    },
+    "ghooks": {
+      "pre-commit": "npm run lint",
+      "commit-msg": "validate-commit-msg"
+    }
   },
   "babel": {
-    "stage": 0,
-    "loose": "all",
-    "compact": false
+    "compact": false,
+    "ignore": "node_modules",
+    "presets": [
+      "es2015-loose",
+      "stage-2",
+      "react"
+    ]
   },
   "eslintConfig": {
     "extends": [
@@ -36,127 +95,69 @@
       "strict-react"
     ]
   },
-  "devpack-doc": {
-    "demohtml": {
-      "cmd": "babel-node -p \"require('react').renderToString(require('./example'))\""
-    },
-    "css": [
-      {
-        "src": "./node_modules/mocha/mocha.css"
-      },
-      "./bundle.css"
-    ],
-    "js": [
-      {
-        "src": "./node_modules/mocha/mocha.js"
-      },
-      {
-        "src": "./node_modules/chai/chai.js"
-      },
-      {
-        "src": "./node_modules/chai-things/lib/chai-things.js"
-      },
-      {
-        "src": "./node_modules/chai-spies/chai-spies.js"
-      },
-      {
-        "src": "./node_modules/json-editor/dist/jsoneditor.js"
-      },
-      {
-        "contents": "chai.should();mocha.setup('bdd');"
-      },
-      "./testbundle.js",
-      {
-        "contents": "window.React = require('react');"
-      },
-      {
-        "contents": "require('react').render(require('example'),document.getElementById('component-preview'));"
-      },
-      {
-        "contents": "if(document.getElementById('mocha')){mocha.checkLeaks();mocha.run();}"
-      }
-    ],
-    "sections": [
-      {
-        "title": "Readme",
-        "type": "markdown",
-        "src": "./README.md"
-      },
-      {
-        "title": "Example Code",
-        "type": "code",
-        "src": "./example.es6"
-      },
-      {
-        "title": "Tests",
-        "type": "html",
-        "contents": "<div id='mocha' class='test-output'></div>"
-      }
+  "stylelint": {
+    "extends": [
+      "stylelint-config-strict"
     ]
-  },
-  "watch": {
-    "doc:html": [
-      "README.md",
-      "./*.js",
-      "package.json"
-    ]
-  },
-  "config": {
-    "lint_opts": "--ignore-path .gitignore --ext .es6",
-    "testbundle_opts": "-r react -r .:./index.es6 -r ./example.js:example ./test/index.js -o testbundle.js",
-    "ghpages_files": "*.html *.css *.js assets/"
-  },
-  "scripts": {
-    "ci": "./build.sh",
-    "doc": "parallelshell 'npm run doc:html' 'npm run doc:js' 'npm run doc:css'",
-    "doc:css": "cssnext --sourcemap example.css bundle.css",
-    "doc:css:watch": "npm run doc:css -- --watch",
-    "doc:html": "devpack-doc index standalone",
-    "doc:html:watch": "npm-watch",
-    "doc:js": "npm run prepublish && browserify -d $npm_package_config_testbundle_opts",
-    "doc:js:watch": "watchify $npm_package_config_testbundle_opts",
-    "doc:watch": "parallelshell 'npm run doc:html:watch' 'npm run doc:js:watch' 'npm run doc:css:watch'",
-    "lint": "eslint $npm_package_config_lint_opts .",
-    "pages": "git stash save -u pages-stash && git branch -D gh-pages; git checkout --orphan gh-pages && git add -f $npm_package_config_ghpages_files && git commit -anm'ghpages' && git push origin HEAD:gh-pages -f",
-    "prepages": "npm run build && npm run doc",
-    "prepublish": "babel . -d . -x .es6",
-    "prepublish:watch": "npm run prepublish -- -w",
-    "pretest": "npm run lint",
-    "provision": "devpack-configure ./package.json",
-    "serve": "browser-sync start --server --files '*.{html,js}'",
-    "test": "karma start",
-    "watch": "parallelshell 'npm run doc:watch' 'npm run prepublish:watch' 'npm run serve'"
   },
   "dependencies": {
+    "@economist/component-silver-tab-bar": "^1.0.0",
     "json-editor": "^0.7.23",
-    "react": "^0.14.1",
-    "@economist/component-silver-tab-bar": "^1.0.0"
+    "react": "^0.14.8||^15.0.0"
   },
   "devDependencies": {
-    "@economist/component-devpack": "^3.4.3",
-    "babel": "^5.8.23",
-    "babelify": "^6.3.0",
-    "browser-sync": "^2.8.2",
-    "browserify": "^11.0.1",
-    "chai": "^3.2.0",
-    "chai-spies": "^0.6.0",
-    "chai-things": "^0.2.0",
-    "cssnext": "^1.8.4",
-    "eslint": "^1.3.1",
-    "eslint-config-strict": "^5.0.0",
-    "eslint-config-strict-react": "^2.0.0",
-    "eslint-plugin-filenames": "^0.1.2",
-    "eslint-plugin-react": "^3.3.1",
-    "karma-chai": "^0.1.0",
-    "karma-mocha": "^0.2.0",
-    "karma-sauce-launcher": "^0.2.14",
-    "mocha": "^2.2.5",
-    "npm-watch": "0.0.1",
-    "parallelshell": "^2.0.0",
-    "pre-commit": "^1.0.10",
-    "watchify": "^3.4.0"
-  },
-  "pre-commit": [
-    "lint"
-  ]
+    "@economist/doc-pack": "^1.0.7",
+    "@economist/provision-react-component": "3.0.3",
+    "babel-cli": "^6.6.5",
+    "babel-core": "^6.7.4",
+    "babel-polyfill": "^6.7.4",
+    "babel-preset-es2015": "^6.6.0",
+    "babel-preset-es2015-loose": "^7.0.0",
+    "babel-preset-react": "^6.5.0",
+    "babel-preset-stage-2": "^6.5.0",
+    "babelify": "^7.2.0",
+    "browserify": "^13.0.0",
+    "browserify-istanbul": "^2.0.0",
+    "chai": "^3.5.0",
+    "chai-enzyme": "^0.4.2",
+    "chai-spies": "^0.7.1",
+    "coveralls": "^2.11.9",
+    "enzyme": "^2.2.0",
+    "eslint": "^2.8.0",
+    "eslint-config-strict": "^8.5.1",
+    "eslint-config-strict-react": "^8.0.1",
+    "eslint-plugin-filenames": "^0.2.0",
+    "eslint-plugin-react": "^5.0.1",
+    "ghooks": "^1.2.1",
+    "git-directory-deploy": "^1.5.0",
+    "hbs-cli": "^1.0.0",
+    "isparta": "^4.0.0",
+    "istanbul": "^0.4.3",
+    "karma": "^0.13.22",
+    "karma-browserify": "^5.0.3",
+    "karma-coverage": "^0.5.5",
+    "karma-mocha": "^0.2.2",
+    "karma-mocha-reporter": "^2.0.1",
+    "karma-phantomjs-launcher": "^1.0.0",
+    "karma-sauce-launcher": "^0.3.1",
+    "lcov-result-merger": "^1.1.0",
+    "live-server": "^0.9.2",
+    "mocha": "^2.4.5",
+    "npm-assets": "^0.1.1",
+    "npm-run-all": "^1.7.0",
+    "phantomjs-prebuilt": "^2.1.7",
+    "postcss-cli": "^2.5.1",
+    "postcss-cssnext": "^2.5.2",
+    "postcss-import": "^8.1.0",
+    "postcss-reporter": "^1.3.3",
+    "postcss-url": "^5.1.1",
+    "react-addons-test-utils": "^0.14.8||^15.0.0",
+    "react-dom": "^0.14.8||^15.0.0",
+    "semantic-release": "^4.3.5",
+    "stylelint": "^6.2.2",
+    "stylelint-config-strict": "^5.0.0",
+    "travis-after-all": "^1.4.4",
+    "validate-commit-msg": "^2.6.1",
+    "watchify": "^3.7.0"
+  }
 }

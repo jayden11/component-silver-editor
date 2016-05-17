@@ -13,13 +13,13 @@
     },
   },
   "chart": {},
-  "data": [],
+  "rawdata": [],
   "metadata": {
-    "context": "",
+    "platform": "",
     "newchart": true,
     "panels": {},
     "type": "",
-    "subcontext": ""
+    "subplatform": ""
   },
   "other": {}
 }
