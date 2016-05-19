@@ -113,6 +113,7 @@ export default class SilverEditor extends React.Component {
     // This seems inescapable inferential...
     const metadata = this.activeConfigObj.metadata;
     // *** Raw data? ***
+    // NOTE: this goes into an element of the charts array
     // *** Layout ***
     // Chart type
     const typeVal = metadata.type;
@@ -140,17 +141,13 @@ export default class SilverEditor extends React.Component {
   // Clones the default CO and calls fcn to populate it. Then sets it
   // as activeCO and appends to CO array...
   // NOTE: ...which may want to be an object
-  makeNewConfigObject(coIndex) {
+  makeNewConfigObject() {
     // Clone empty config structure
     const emptyConfig = Object.assign({}, DefaultConfigObject);
     // Insert default properties
     const fullConfig = this.getDefaultConfigObjectProperties(emptyConfig);
     // Set as global and push into CO array:
     this.activeConfigObj = fullConfig;
-    // NOTE: flakey -- assumes some sort of sequentiality, or something...
-    // I imagine I need to check current length and plug any gaps with
-    // an empty object...
-    this.configObjArray[coIndex] = fullConfig;
   }
   // MAKE NEW CONFIG OBJECT ends
 
@@ -164,12 +161,25 @@ export default class SilverEditor extends React.Component {
   getDefaultConfigObjectProperties(config) {
     // Metadata
     const metadata = Object.assign({}, DefaultPreferences.metadata.defaults);
-    // NOTE: keeping panel no/of/rows in metadata
-    config.metadata = metadata;
+    // Charts array:
+    const thisChart = {
+      type: metadata.type,
+      chartdata: [],
+    };
+    config.charts[metadata.panels.number - 1] = thisChart;
     // I originally dug out a default background (width, height, margins)
     // But w/h are extracted by updateSizes, based on platform/section
     // Margins are currently done on dispatch, altho I may change that
     // to allow user-overwrite
+    // Delete default type from metadata:
+    // NOTE: don't really like this... is there a better location
+    // for the default type in the lookups?
+    Reflect.deleteProperty(metadata, 'type');
+    // NOTE: keeping panel no/of/rows in metadata
+    config.metadata = metadata;
+    /* eslint-disable no-console */
+    console.log(config);
+    /* eslint-enable no-console */
     return config;
   }
   // GET DEFAULT CONFIG OBJECT PROPERTIES ends
@@ -307,13 +317,17 @@ export default class SilverEditor extends React.Component {
       shapeArray.push(oneShape);
     }
     this.activeConfigObj.background.shapes = shapeArray;
+    // NOTE: I may have to do validation...
+    // Now pack the activeCO into the collection...
+    const coIndex = this.activeConfigObj.metadata.panels.number;
+    // NOTE: flakey -- assumes some sort of sequentiality, or something...
+    // I imagine I need to check current length and plug any gaps with
+    // an empty object...
+    this.configObjArray[coIndex] = this.activeConfigObj;
     /* eslint-disable no-console */
     console.log('Hopefully ready to send something upstairs...');
-    console.log(this.activeConfigObj);
+    console.log(this.configObjArray);
     /* eslint-enable no-console */
-    // NOTE: the remainder of this function is all wrong
-    // I may have to do validation, but no updating. Just
-    // check and fire off...
   }
 
   // FIELD PLATFORM FROM TAB BAR
