@@ -16,9 +16,10 @@
 // NOTE: this needs more work. Among other things, if input is 'total' I
 // ought always be able to reset it, but 'number' and 'row' should adapt
 // if inconsistent...
-export function validatePanelValues(targetId, val, configObject) {
+export function validatePanelValues(targetId, val, inPanels) {
   // Clone current CO panel properties & substitute potential new value
-  const panels = Object.assign({}, configObject.metadata.panels);
+  // then run checks...
+  const panels = Object.assign({}, inPanels);
   for (const key in panels) {
     if (key === targetId) {
       panels[targetId] = val;
@@ -36,7 +37,7 @@ export function validatePanelValues(targetId, val, configObject) {
   if (panels.rows > panels.total) {
     return false;
   }
-  // Anything else to check...?
+  // NOTE: anything else to check...?
   // Still here? New val is OK
   return true;
 }

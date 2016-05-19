@@ -4,7 +4,7 @@
   "background": {
     "outerbox": {
       "dimensions": {
-        "default": {"display": "Default", "width": 117, "height": 87, "default": true}
+        "default": {"display": "Default", "width": 160, "height": 155, "default": true}
       },
       "margins": {"left": 6, "right": 6, "top": 6, "bottom": 6}
     },
@@ -74,10 +74,11 @@
       {"id": "pie", "display": "Pie"}
     ],
     "defaults": {
+      "newchart": true,
       "platform": "print",
       "subplatform": "narrow",
-      "section": "br",
-      "type": "bar",
+      "section": "fn",
+      "type": "line",
       "panels": {
         "number": 1,
         "total": 1,

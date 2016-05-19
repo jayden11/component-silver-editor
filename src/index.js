@@ -5,7 +5,7 @@ import * as EditorUtilities from './editorutilities.js';
 import SilverTabBar from '@economist/component-silver-tab-bar';
 
 // The default config object, to be 'sharpened up' and passing down the tree...
-import ConfigObject from '../assets/default_config_object.json';
+import DefaultConfigObject from '../assets/default_config_object.json';
 // Default preferences ( complete set of style definitions):
 import DefaultPreferences from '../assets/default_preferences.json';
 // Platform-specific preferences:
@@ -14,7 +14,7 @@ import PlatformPreferences from '../assets/platform_preferences.json';
 export default class SilverEditor extends React.Component {
 
   // ===========================================================================
-  // === REACT STUFF
+  // === REACT LIFECYCLE
   // === Props, state, lifecycle...
   // ===========================================================================
 
@@ -46,7 +46,7 @@ export default class SilverEditor extends React.Component {
       passUpdatedConfig: (evt) => {
         /* eslint-disable no-console */
         // So we can see what we're tossing out of the basket:
-        console.log(evt.background.outerbox);
+        console.log(evt);
         /* eslint-enable */
       },
     };
@@ -59,6 +59,7 @@ export default class SilverEditor extends React.Component {
     super(props);
     this.state = {
       folds: props.folds,
+      platforms: [],
     };
     // Fold open/close btn
     this.handleAccordionFoldButtonClick = this.handleAccordionFoldButtonClick.bind(this);
@@ -71,20 +72,107 @@ export default class SilverEditor extends React.Component {
     this.handleEditorResetButtonClick = this.handleEditorResetButtonClick.bind(this);
     // Callback from tab bar: platform/subplatform
     this.handlePlatformFromTabBar = this.handlePlatformFromTabBar.bind(this);
+    // Active config object and array:
+    this.activeConfigObj = {};
+    // NOTE: I'm not sure whether an array is right. Maybe an object...
+    this.configObjArray = [];
   }
   // CONSTRUCTOR ends
 
+  // COMPONENT WILL MOUNT
+  // Calls makeNewConfigObject to assemble a new default CO
+  componentWillMount() {
+    const coIndex = 0;
+    this.makeNewConfigObject(coIndex);
+    this.unpickPlatforms();
+  }
+  // COMPONENT WILL MOUNT ends
+
   // COMPONENT DID MOUNT
+  // Call function to populate the folds
   componentDidMount() {
-    this.updateSizes();
-    this.fieldUpdatedConfigObject();
+    this.updateSizes(true);
+    this.fieldUpdates();
   }
   // COMPONENT DID MOUNT ends
 
   // ===========================================================================
-  // === REACT STUFF ENDS
+  // === REACT LIFECYCLE ENDS
   // ===========================================================================
 
+
+  // ===========================================================================
+  // CONFIG OBJECT: IN AND OUT
+  // ===========================================================================
+
+  // POPULATE FORM ELEMENTS
+  // Called from componentWillMount.
+  // Extracts values from active CO and displays.
+  // NOTE: this should also be callable if user switches panels...
+  populateFormElements() {
+    // This seems inescapable inferential...
+    const metadata = this.activeConfigObj.metadata;
+    // *** Raw data? ***
+    // *** Layout ***
+    // Chart type
+    const typeVal = metadata.type;
+    this.refs['type-select'].value = typeVal;
+    // Section
+    const sectionVal = metadata.section;
+    this.refs['section-select'].value = sectionVal;
+    // NOTE: panels and sizes from background node
+    // Panals
+    const panelVals = metadata.panels;
+    this.refs.panelNumber.value = panelVals.number;
+    this.refs.panelNumber.max = panelVals.total;
+    this.refs.panelTotal.value = panelVals.total;
+    this.refs.panelRows.value = panelVals.rows;
+    this.refs.panelRows.max = panelVals.total;
+    const sizeVals = this.activeConfigObj.background.outerbox.dimensions;
+    this.refs.sizeWidth.value = sizeVals.width;
+    this.refs.sizeHeight.value = sizeVals.height;
+    // *** Other folds to come ***
+  }
+
+  // MAKE NEW CONFIG OBJECT
+  // Called from componentWillMount...
+  // NOTE: also when new panel is added
+  // Clones the default CO and calls fcn to populate it. Then sets it
+  // as activeCO and appends to CO array...
+  // NOTE: ...which may want to be an object
+  makeNewConfigObject(coIndex) {
+    // Clone empty config structure
+    const emptyConfig = Object.assign({}, DefaultConfigObject);
+    // Insert default properties
+    const fullConfig = this.getDefaultConfigObjectProperties(emptyConfig);
+    // Set as global and push into CO array:
+    this.activeConfigObj = fullConfig;
+    // NOTE: flakey -- assumes some sort of sequentiality, or something...
+    // I imagine I need to check current length and plug any gaps with
+    // an empty object...
+    this.configObjArray[coIndex] = fullConfig;
+  }
+  // MAKE NEW CONFIG OBJECT ends
+
+  // GET DEFAULT CONFIG OBJECT PROPERTIES
+  // Called from makeNewConfigObj to set properties to default
+  // values in default preferences file. These default properties are:
+  // - metadata: newchart, panels, platform, section, subplatform, type
+  // - background.outerbox: dimensions
+  // NOTE: others, no doubt, to come. This might include margins, if I
+  // want to display any for overwriting...
+  getDefaultConfigObjectProperties(config) {
+    // Metadata
+    const metadata = Object.assign({}, DefaultPreferences.metadata.defaults);
+    // NOTE: keeping panel no/of/rows in metadata
+    config.metadata = metadata;
+    // I originally dug out a default background (width, height, margins)
+    // But w/h are extracted by updateSizes, based on platform/section
+    // Margins are currently done on dispatch, altho I may change that
+    // to allow user-overwrite
+    return config;
+  }
+  // GET DEFAULT CONFIG OBJECT PROPERTIES ends
 
   // ===========================================================================
   // === UNSORTED FUNCTIONS
@@ -98,46 +186,32 @@ export default class SilverEditor extends React.Component {
   // GET BAR CHART HEIGHT: in utilities
 
   // UPDATE SIZES
-  updateSizes() {
-    // Values from CO's metadata:
-    const metadata = ConfigObject.metadata;
+  // Called from handleLayoutSectionChange
+  // Updates size values in aCO, based on (sub-)platformm and section
+  updateSizes(redisplay) {
+    // Values from aCO's metadata:
+    const metadata = this.activeConfigObj.metadata;
     const platform = metadata.platform;
     const subplatform = metadata.subplatform;
     const section = metadata.section;
-    // But subplatform may have to change if I'm changing section
+    // subplatform may have to change if I'm changing section
     // (eg from BR:narrow/medium/wide to LD:default... or vice versa)
-
     // I want a chain...
     const chain = [ 'background', 'outerbox', 'dimensions' ];
+    // Find the relevant node...
     const myNode = this.findPreferencesNode(platform, section, chain);
     const subplatformNode = myNode[subplatform];
-    //
-    // const myNode = DefaultPreferences.background.outerbox.dimensions;
-    // We always want to look (a) in defaults
-    /*
-    // By default, get sizes from default preferences:
-    const platformNode = DefaultPreferences.outerbox.dimensions;
-    // But is there a platform node?
-    // Is there a section-specific node in this platform?
-    // If not, use default...
-    let sectionNode = platformNode[section];
-    if (typeof sectionNode === 'undefined') {
-      sectionNode = platformNode.default;
+    // Update the aCO (as complete dimensions node, since when this is
+    // called from componentDidMount it doesn't exist)
+    const dims = {
+      height: subplatformNode.height,
+      width: subplatformNode.width,
+    };
+    this.activeConfigObj.background.outerbox.dimensions = dims;
+    // If requested, update the display...
+    if (redisplay) {
+      this.populateFormElements();
     }
-    // Does the section define subplatforms? If not, use default...
-    // (In practice, I think we'd always use 'default' for defined
-    // subplatforms)
-    let subplatformNode = sectionNode.outerbox.dimensions[subplatform];
-    if (typeof subplatformNode === 'undefined') {
-      subplatformNode = sectionNode.outerbox.dimensions.default;
-    }
-    */
-    // Update inputs:
-    this.refs.width.value = subplatformNode.width;
-    this.refs.height.value = subplatformNode.height;
-    // ...and the config object:
-    ConfigObject.background.outerbox.width = subplatformNode.width;
-    ConfigObject.background.outerbox.height = subplatformNode.height;
   }
   // UPDATE SIZES ends
 
@@ -206,20 +280,23 @@ export default class SilverEditor extends React.Component {
 
   // ======================
 
-  // ASSEMBLE CONFIG OBJECT
-  // Placeholder for config object validation, when/if needed...
-  // Also does assembling of 'under-the-hood' properties
-  assembleConfigObject() {
+  // FIELD UPDATES
+  // Called from...
+  // Individual listeners have
+  // updated the CO. In theory it is valid, but I may want
+  // to do subsequent checks before tossing it up to Sibyl
+  fieldUpdates() {
+    // I need to fetch in various properties
     // We need to know:
-    const section = ConfigObject.metadata.section;
-    const platform = ConfigObject.metadata.platform;
+    const section = this.activeConfigObj.metadata.section;
+    const platform = this.activeConfigObj.metadata.platform;
     // Margins
     // Where do I get margins from? Function should, in theory, return a node
     // where I can find what I want, either specific or default...
     // Args 1 & 2 are platform and section; subsequent arguments will be 'spread'
     // into an array leading to a specific sub-node...
     const margins = this.findPreferencesNode(platform, section, [ 'background', 'outerbox', 'margins' ]);
-    ConfigObject.background.margins = margins;
+    this.activeConfigObj.background.margins = margins;
     //
     // Next up: background shapes...
     // List is defined in defaults
@@ -229,29 +306,14 @@ export default class SilverEditor extends React.Component {
       const oneShape = this.findPreferencesNode(platform, section, [ 'background', 'shapes', shapeKeys[iii] ]);
       shapeArray.push(oneShape);
     }
-    ConfigObject.background.shapes = shapeArray;
-    //
-    // Panels? Layout is already in metadata; but so far nothing on actual appearance...
-    // ...which I'll leave for now, but would be platform-based
-    // ...and, assuming that nothing's gone wrong (not that I'm testing yet!)...
-    return true;
-  }
-  // ASSEMBLE CONFIG OBJECT ends
-
-  // FIELD UPDATED CONFIG OBJECT
-  // Called from ALL form elements' event listeners...
-  // ...if value is valid. Individual listeners have
-  // updated the CO. In theory it is valid, but I may want
-  // to do subsequent checks before tossing it up to Sibyl
-  // NOTE: name of this function is wrong: do better!!! *** ***
-  fieldUpdatedConfigObject() {
-    this.updateSizes();
-    if (this.assembleConfigObject()) {
-      // Decouple:
-      const config = Object.assign({}, ConfigObject);
-      // ...and dispatch the CO back to Sibyl...
-      this.props.passUpdatedConfig(config);
-    }
+    this.activeConfigObj.background.shapes = shapeArray;
+    /* eslint-disable no-console */
+    console.log('Hopefully ready to send something upstairs...');
+    console.log(this.activeConfigObj);
+    /* eslint-enable no-console */
+    // NOTE: the remainder of this function is all wrong
+    // I may have to do validation, but no updating. Just
+    // check and fire off...
   }
 
   // FIELD PLATFORM FROM TAB BAR
@@ -260,22 +322,24 @@ export default class SilverEditor extends React.Component {
   // ...and children (array, possible empty, and currently redundant)
   handlePlatformFromTabBar(obj) {
     // Reset reference object:
-    ConfigObject.metadata.platform = obj.parent;
-    ConfigObject.metadata.subplatform = obj.child;
-    // NOTE: comm'd out call that kicks off chart draw...
-    this.updateSizes();
+    this.activeConfigObj.metadata.platform = obj.parent;
+    this.activeConfigObj.metadata.subplatform = obj.child;
+    this.updateSizes(true);
+    this.fieldUpdates();
   }
   // FIELD PLATFORM FROM TAB BAR ends
 
   // UNPICK PLATFORMS
-  // Called from getTabBarJSX to assemble the platform definitions to pass
-  // down to the TabBar component
+  // Called from componentWillMount, and handleLayoutSectionChange
+  // Works out platform definitions and resets state to force
+  // render with revised TabBar component
   unpickPlatforms() {
     // Get default platform and all platform nodes from lookup:
-    const defaultPlatform = DefaultPreferences.metadata.defaults.platform;
-    const defaultSubPlatform = DefaultPreferences.metadata.defaults.subplatform;
+    // const defaultPlatform = DefaultPreferences.metadata.defaults.platform;
+    const platform = this.activeConfigObj.metadata.platform;
+    const section = this.activeConfigObj.metadata.section;
     // Result will be an array of platform definitions
-    const result = [];
+    const platforms = [];
     // Loop by platform objects:
     Object.keys(PlatformPreferences).forEach((key) => {
       // Exclude my comments (this needs to be deleted... or something... eventually)
@@ -286,21 +350,23 @@ export default class SilverEditor extends React.Component {
         const tempObj = { parent: key };
         // Subplatforms list:
         const children = [];
-        Object.keys(obj.default.background.outerbox.dimensions).forEach((val) => {
+        //
+        let myNode = obj[section];
+        if (typeof myNode === 'undefined') {
+          myNode = obj.default;
+        }
+        Object.keys(myNode.background.outerbox.dimensions).forEach((val) => {
           children.push(val);
         });
         // So we have an array of child names.
         // ( Platforms with no subplatform: children = ['default'] )
         tempObj.children = children;
         // Flag for default hightlight on tab bar
-        tempObj.default = (key === defaultPlatform);
-        result.push(tempObj);
+        tempObj.default = (key === platform);
+        platforms.push(tempObj);
       }
     });
-    // Update CO with default values:
-    ConfigObject.metadata.platform = defaultPlatform;
-    ConfigObject.metadata.subplatform = defaultSubPlatform;
-    return result;
+    this.setState({ platforms });
   }
   // UNPICK PLATFORMS ends
 
@@ -381,19 +447,22 @@ export default class SilverEditor extends React.Component {
   // HANDLE LAYOUT TYPE CHANGE
   // Listener to change event on chart Type dropdown
   handleLayoutTypeSelectChange(evt) {
-    ConfigObject.metadata.type = evt.target.value;
-    this.fieldUpdatedConfigObject();
+    this.activeConfigObj.metadata.type = evt.target.value;
+    // Don't do updateSizes (don't want to overwrite any user-
+    // change of sizes...)
+    this.fieldUpdates();
   }
 
   // HANDLE LAYOUT SECTION CHANGE
   // Listener to change event on Section dropdown
   handleLayoutSectionChange(evt) {
+    const metadata = this.activeConfigObj.metadata;
     const newSection = evt.target.value;
-    ConfigObject.metadata.section = newSection;
+    metadata.section = newSection;
     // But I also need to reset subplatform to default
     // Array sets chain to look...
     const chain = [ 'background', 'outerbox', 'dimensions' ];
-    const sectionNode = this.findPreferencesNode(ConfigObject.metadata.platform, newSection, chain);
+    const sectionNode = this.findPreferencesNode(metadata.platform, newSection, chain);
     // Find default subplatform (width) node:
     let defaultStr = 'default';
     // NOTE: is there a better way of doing this?
@@ -402,30 +471,34 @@ export default class SilverEditor extends React.Component {
         defaultStr = key;
       }
     }
-    ConfigObject.metadata.subplatform = defaultStr;
-    this.fieldUpdatedConfigObject();
+    metadata.subplatform = defaultStr;
+    // Update sizes in aCO, with arg to redisplay, too...
+    this.updateSizes(true);
+    // And send it all upstairs...
+    this.fieldUpdates();
+    // And update the tab bar:
+    this.unpickPlatforms();
   }
   // HANDLE LAYOUT SECTION CHANGE ends
 
   // HANDLE LAYOUT PANEL CHANGE
+  // Change to panel number, total or rows...
   handleLayoutPanelChange(evt) {
-    // Extract panel property from input id
+    const panels = this.activeConfigObj.metadata.panels;
+    // Extract id and val from event
     const targ = evt.target;
     const targetId = targ.id.split('-')[1];
     const newVal = targ.value;
-    const oldVal = ConfigObject.metadata.panels[targetId];
-    // Validate (fcn in utilities module)...
-    if (EditorUtilities.validatePanelValues(targetId, newVal, ConfigObject)) {
-      // If targ is 'total' input, reset max on others:
-      if (targetId === 'total') {
-        this.refs.number.max = newVal;
-        this.refs.rows.max = newVal;
-        ConfigObject.metadata.panels[targetId] = newVal;
-        this.fieldUpdatedConfigObject();
-      }
+    const oldVal = panels[targetId];
+    // Validate (fcn in utilities module)
+    if (EditorUtilities.validatePanelValues(targetId, newVal, panels)) {
+      // New val is OK: update aCO by ref...
+      panels[targetId] = newVal;
+      // ...and repopulate the form
+      this.populateFormElements();
     } else {
       // Reset target to previous value
-      // Ideally there'd be some sort of alert...
+      // NOTE: ideally there'd be some sort of alert...
       targ.value = oldVal;
     }
   }
@@ -440,14 +513,15 @@ export default class SilverEditor extends React.Component {
     // Validate...?
     /* eslint-disable no-console */
     // NOTE: console.log as reminder of functionality to come...
-    console.log(`${ targetId.toUpperCase() } set to ${ newVal }... am I doing anything with this?`);
-    /* eslint-enable */
+    console.log(`${ targetId.toUpperCase() } reset to ${ newVal }... am I doing anything with this?`);
+    /* eslint-enable no-console*/
   }
   // HANDLE LAYOUT SIZE CHANGE ends
 
   // HANDLE LAYOUT BAR SPAN EVENT
   // Listener to the 'recommended height' button
-  handleLayoutRecommendedHeightyEvent(event) {
+  // NOTE: just a Placeholder: functionality doesn't exist yet...
+  handleLayoutRecommendedHeightEvent(event) {
     // Get the value from the span...
     const val = parseFloat(event.target.textContent);
     // ...and send to the input:
@@ -477,13 +551,11 @@ export default class SilverEditor extends React.Component {
   // Dropdown for section selection ('BR' etc)
   // Called from makeLayoutFormJsx
   makeLayoutSectionDropdown() {
+    // Available options from default prefs
     const sectionArray = DefaultPreferences.metadata.sections;
     const options = sectionArray.map((opt, index) => (
       <option key={index} value={opt.id}>{opt.display}</option>
     ));
-    const defaultValue = DefaultPreferences.metadata.defaults.section;
-    // Update the config object:
-    ConfigObject.metadata.section = defaultValue;
     return (
       <p className="fold-form-p">
         <label className="fold-form-label"
@@ -492,8 +564,7 @@ export default class SilverEditor extends React.Component {
           Section
         </label>
         <select className="accordion-select"
-          id="accordion-section-select"
-          defaultValue={defaultValue}
+          id="accordion-section-select" ref="section-select"
           onChange={this.handleLayoutSectionChange}
         >
           {options}
@@ -511,9 +582,6 @@ export default class SilverEditor extends React.Component {
     const options = typeArray.map((opt, index) => (
       <option key={index} value={opt.id}>{opt.display}</option>
     ));
-    const defaultValue = DefaultPreferences.metadata.defaults.type;
-    // Update the config object:
-    ConfigObject.metadata.type = defaultValue;
     return (
       <p className="fold-form-p">
         <label className="fold-form-label"
@@ -522,8 +590,7 @@ export default class SilverEditor extends React.Component {
           Chart type
         </label>
         <select className="accordion-select"
-          id="accordion-type-select"
-          defaultValue={defaultValue}
+          id="accordion-type-select" ref="type-select"
           onChange={this.handleLayoutTypeSelectChange}
         >
           {options}
@@ -535,12 +602,10 @@ export default class SilverEditor extends React.Component {
 
   // MAKE LAYOUT PANEL FIELDSET
   // Called from makeLayoutFormJsx to construct panels fieldset
+  // NOTE: no default values set now. And max vals for number and
+  // rows are dynamic
   makeLayoutPanelFieldset() {
-    // Get defaults from prefs
-    const panelDefaults = DefaultPreferences.metadata.defaults.panels;
     const inputClass = 'layout-panels-fieldset-input';
-    // Update pass to config object
-    ConfigObject.metadata.panels = panelDefaults;
     return (
       <fieldset className="accordion-fieldset layout-panels-fieldset">
         <legend>Panels</legend>
@@ -549,8 +614,7 @@ export default class SilverEditor extends React.Component {
         <input
           type="number" id="panel-number-input"
           className={inputClass}
-          defaultValue={panelDefaults.number}
-          min="1" max={panelDefaults.total} ref="number"
+          min="1" ref="panelNumber"
           onBlur={this.handleLayoutPanelChange}
           required
         ></input>
@@ -560,8 +624,7 @@ export default class SilverEditor extends React.Component {
         <input
           type="number" id="panel-total-input"
           className={inputClass}
-          defaultValue={panelDefaults.total}
-          min="1" max="8" ref="total"
+          min="1" max="8" ref="panelTotal"
           onBlur={this.handleLayoutPanelChange}
           required
         ></input>
@@ -571,13 +634,11 @@ export default class SilverEditor extends React.Component {
         <input
           type="number" id="panel-rows-input"
           className={inputClass}
-          defaultValue={panelDefaults.rows}
-          min="1" max={panelDefaults.total} ref="rows"
+          min="1" ref="panelRows"
           onBlur={this.handleLayoutPanelChange}
           required
         ></input>
         </p>
-
       </fieldset>
     );
   }
@@ -585,13 +646,9 @@ export default class SilverEditor extends React.Component {
 
   // MAKE LAYOUT SIZE FIELDSET
   // Called from makeLayoutFormJsx, to construct chart size fieldset
+  // NOTE: no content now...
   makeLayoutSizeFieldset() {
     const inputClass = 'layout-size-fieldset-input';
-    // Get defaults from prefs
-    // const panelDefaults = DefaultPreferences.metadata.defaults.panels;
-    // Update pass to config object
-    // NOTE:    ConfigObject.metadata.panels = panelDefaults;
-    // (what was this...?)
     return (
       <fieldset className="accordion-fieldset layout-size-fieldset">
         <legend>Size</legend>
@@ -600,7 +657,7 @@ export default class SilverEditor extends React.Component {
           <input
             type="number" id="size-width-input"
             className={inputClass}
-            min="50" ref="width"
+            min="50" ref="sizeWidth"
             onBlur={this.handleLayoutSizeChange}
             required
           ></input>
@@ -610,7 +667,7 @@ export default class SilverEditor extends React.Component {
           <input
             type="number" id="size-height-input"
             className={inputClass}
-            min="50" ref="height"
+            min="50" ref="sizeHeight"
             onBlur={this.handleLayoutSizeChange}
             required
           ></input>
@@ -715,12 +772,17 @@ export default class SilverEditor extends React.Component {
   // NOTE: I'm wrapping the tab bar in a 'header' div. This is
   // in case I decide to add any other content...
   makeHeaderJsx() {
-    const unpickedPlatforms = this.unpickPlatforms();
+    let headerClass = 'editor-header-wrapper';
+    // Crude check for a parent. If none, I add a class to narrow header to 100%
+    // NOTE: there must be a grownup who can tell me how to do this properly
+    if (typeof (this.parent) === 'undefined') {
+      headerClass += ' parentless-header';
+    }
     return (
-      <div className="editor-header-wrapper">
+      <div className={headerClass}>
          <div className="chart-platform-choices-div">
           <SilverTabBar
-            tabBarDefinitions={unpickedPlatforms}
+            tabBarDefinitions={this.state.platforms}
             onPassPlatformToEditor={this.handlePlatformFromTabBar}
           />
         </div>
@@ -740,6 +802,7 @@ export default class SilverEditor extends React.Component {
 
   // ===========================================================================
   // RENDER
+  // Rerenders when accordion or tab-bar structure changes
   render() {
     // Accordion structure...
     // NOTE: I could derive the fold ID names, below, from props definitions,
@@ -749,19 +812,21 @@ export default class SilverEditor extends React.Component {
     const scalesFoldJsx = this.makeFoldJsx('scales');
     // Header stretches across entire Sibyl window and contains
     // - Tab bar (dependent component) for platform choices
-    // - Reset button (for now, at least...)
+    // - Reset button (removedfor now, at least...)
     const headerJsx = this.makeHeaderJsx();
+    // Next was prev'y the outer wrapper rendered here. But now
+    // rendered by Sibyl...
+    // <div className="silverbullet-editor-wrapper">
+    // </div>
     return (
-      <div className="silverbullet-editor-wrapper">
         <div className="editor-outer-wrapper">
           <ul className="editor-accordion">
             {chartdataFoldJsx}
             {layoutFoldJsx}
             {scalesFoldJsx}
           </ul>
+          {headerJsx}
         </div>
-        {headerJsx}
-      </div>
     );
   }
 }

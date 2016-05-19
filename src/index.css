@@ -1,33 +1,28 @@
 @import '@economist/component-silver-tab-bar';
 
-/* Wrapper for entire Editor occupies right half of available space... */
-
-.silverbullet-editor-wrapper {
-  position: absolute;
-  top: 0;
-  left: 50%;
-  width: 50%;
-  height: 100%;
-  background-color: #fff;
-}
 
 /* Header occupies top 30px and sprawls left across chart component */
 
 .editor-header-wrapper {
   position: absolute;
-  top: 0;
+  top: -40px;
   right: 0;
-  width: 200%;
-  height: 30px;
+  width: 206%;
+  height: 40px;
   pointer-events: none;
+}
+
+/* Next is a kludge: if Editor isn't a child of Sibyl,
+this class resets header width */
+
+.parentless-header {
+  width: 100%;
 }
 
 /* Outer wrapper for form */
 
 .editor-outer-wrapper {
-  overflow: hidden;
   position: absolute;
-  /* top: -10px; */
   width: 95%;
   height: 95%;
   margin-left: 3%;
