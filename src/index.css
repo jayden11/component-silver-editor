@@ -19,6 +19,14 @@ this class resets header width */
   width: 100%;
 }
 
+.chart-platform-choices-div {
+  width: 50%;
+}
+
+.parentless-choices {
+  width: 100%;
+}
+
 /* Outer wrapper for form */
 
 .editor-outer-wrapper {

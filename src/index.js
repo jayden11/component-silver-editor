@@ -25,6 +25,9 @@ export default class SilverEditor extends React.Component {
       passUpdatedConfig: React.PropTypes.func.isRequired,
       // Default fold definitions, which it seems reasonable to keep here...
       folds: React.PropTypes.object,
+      // If I'm debugging Editor directly, I just want to know, so I
+      // can tweak the CSS for better display...
+      parentCheck: React.PropTypes.string,
     };
   }
 
@@ -198,9 +201,6 @@ export default class SilverEditor extends React.Component {
     // Delete default type from metadata:
     // NOTE: keeping panel no/of/rows in metadata
     config.metadata = metadata;
-    /* eslint-disable no-console */
-    console.log(config);
-    /* eslint-enable no-console */
     return config;
   }
   // GET DEFAULT CONFIG OBJECT PROPERTIES ends
@@ -343,14 +343,15 @@ export default class SilverEditor extends React.Component {
     // for the default type in the lookups?
     Reflect.deleteProperty(this.configObject.metadata, 'type');
     // NOTE: I may have to do validation...
-    // NOTE: flakey -- assumes some sort of sequentiality, or something...
-    // const chartindex = this.configObject.metadata.chartindex;
-    // I imagine I need to check charts array and plug any gaps with
-    // an empty object...
-    /* eslint-disable no-console */
-    console.log('Hopefully ready to send something upstairs...');
-    console.log(this.configObject);
-    /* eslint-enable no-console */
+    //
+    // Some debugging if I'm running the Editor independently:
+    if (typeof this.props.parentCheck === 'undefined') {
+      /* eslint-disable no-console */
+      console.log('If I was running under Sibyl, this is what I would send upstairs...');
+      console.log(this.configObject);
+      /* eslint-enable no-console */
+    }
+    this.props.passUpdatedConfig(this.configObject);
   }
 
   // FIELD PLATFORM FROM TAB BAR
@@ -814,14 +815,16 @@ export default class SilverEditor extends React.Component {
   // in case I decide to add any other content...
   makeHeaderJsx() {
     let headerClass = 'editor-header-wrapper';
+    let choicesClass = 'chart-platform-choices-div';
     // Crude check for a parent. If none, I add a class to narrow header to 100%
     // NOTE: there must be a grownup who can tell me how to do this properly
-    if (typeof (this.parent) === 'undefined') {
+    if (typeof (this.props.parentCheck) === 'undefined') {
       headerClass += ' parentless-header';
+      choicesClass += ' parentless-choices';
     }
     return (
       <div className={headerClass}>
-         <div className="chart-platform-choices-div">
+         <div className={choicesClass}>
           <SilverTabBar
             tabBarDefinitions={this.state.platforms}
             onPassPlatformToEditor={this.handlePlatformFromTabBar}
