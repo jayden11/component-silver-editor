@@ -74,6 +74,7 @@
       {"id": "pie", "display": "Pie"}
     ],
     "defaults": {
+      "chartindex": 0,
       "newchart": true,
       "platform": "print",
       "subplatform": "narrow",

@@ -1,6 +1,6 @@
 {
-  "__NOTES1__": "Revised default config object.",
-  "__NOTES2__": "Defines only 1 actual property.",
+  "__NOTES1__": "Revised default config object",
+  "__NOTES2__": "With 'charts' array: May 2016",
   "background": {
     "outerbox": {},
     "shapes": {},
@@ -13,10 +13,10 @@
   },
   "charts": [],
   "metadata": {
+    "chartindex": 0,
     "platform": "",
     "newchart": true,
     "panels": {},
-    "type": "",
     "subplatform": ""
   },
   "other": {}

@@ -73,9 +73,9 @@ export default class SilverEditor extends React.Component {
     // Callback from tab bar: platform/subplatform
     this.handlePlatformFromTabBar = this.handlePlatformFromTabBar.bind(this);
     // Active config object and array:
-    this.activeConfigObj = {};
+    this.configObject = {};
     // NOTE: I'm not sure whether an array is right. Maybe an object...
-    this.configObjArray = [];
+    this.configObjectArray = [];
   }
   // CONSTRUCTOR ends
 
@@ -111,29 +111,48 @@ export default class SilverEditor extends React.Component {
   // NOTE: this should also be callable if user switches panels...
   populateFormElements() {
     // This seems inescapable inferential...
-    const metadata = this.activeConfigObj.metadata;
+    const metadata = this.configObject.metadata;
     // *** Raw data? ***
     // NOTE: this goes into an element of the charts array
     // *** Layout ***
-    // Chart type
-    const typeVal = metadata.type;
-    this.refs['type-select'].value = typeVal;
     // Section
     const sectionVal = metadata.section;
     this.refs['section-select'].value = sectionVal;
-    // NOTE: panels and sizes from background node
-    // Panals
+    // Panels
     const panelVals = metadata.panels;
     this.refs.panelNumber.value = panelVals.number;
     this.refs.panelNumber.max = panelVals.total;
     this.refs.panelTotal.value = panelVals.total;
     this.refs.panelRows.value = panelVals.rows;
     this.refs.panelRows.max = panelVals.total;
-    const sizeVals = this.activeConfigObj.background.outerbox.dimensions;
+    // Panels total may change number of elements in charts array:
+    if (panelVals.total > this.configObject.charts.length) {
+      // Add new, empty chart objects:
+      for (let chIndex = this.configObject.charts.length; chIndex < panelVals.total; chIndex++) {
+        this.configObject.charts.push(this.getNewChartObject());
+      }
+    } else if (panelVals.total < this.configObject.charts.length) {
+      // Delete excess chart objects
+      for (let chIndex = this.configObject.charts.length; chIndex > panelVals.total; chIndex--) {
+        this.configObject.charts.pop();
+      }
+    }
+    // From panel number:
+    // Chart index...
+    metadata.chartindex = panelVals.number - 1;
+    // ...and chart type
+    // NOTE: I suspect that chart type eventually moves to the chart-data fold
+    // But for now...
+    const typeVal = this.configObject.charts[metadata.chartindex].type;
+    this.refs['type-select'].value = typeVal;
+    // Sizes
+    const sizeVals = this.configObject.background.outerbox.dimensions;
     this.refs.sizeWidth.value = sizeVals.width;
     this.refs.sizeHeight.value = sizeVals.height;
+
     // *** Other folds to come ***
   }
+  // POPULATE FORM ELEMENTS ends
 
   // MAKE NEW CONFIG OBJECT
   // Called from componentWillMount...
@@ -144,12 +163,22 @@ export default class SilverEditor extends React.Component {
   makeNewConfigObject() {
     // Clone empty config structure
     const emptyConfig = Object.assign({}, DefaultConfigObject);
-    // Insert default properties
-    const fullConfig = this.getDefaultConfigObjectProperties(emptyConfig);
-    // Set as global and push into CO array:
-    this.activeConfigObj = fullConfig;
+    // Insert default properties and set as global:
+    this.configObject = this.getDefaultConfigObjectProperties(emptyConfig);
   }
   // MAKE NEW CONFIG OBJECT ends
+
+  // GET NEW CHART OBJECT
+  // Called from getDefaultConfigObjectProperties and populateFormElements
+  // Creates a new chart data object with default type
+  getNewChartObject() {
+    // Chart object:
+    const newChart = {
+      type: DefaultPreferences.metadata.defaults.type,
+      chartdata: [],
+    };
+    return newChart;
+  }
 
   // GET DEFAULT CONFIG OBJECT PROPERTIES
   // Called from makeNewConfigObj to set properties to default
@@ -161,20 +190,12 @@ export default class SilverEditor extends React.Component {
   getDefaultConfigObjectProperties(config) {
     // Metadata
     const metadata = Object.assign({}, DefaultPreferences.metadata.defaults);
-    // Charts array:
-    const thisChart = {
-      type: metadata.type,
-      chartdata: [],
-    };
-    config.charts[metadata.panels.number - 1] = thisChart;
+    config.charts[metadata.chartindex] = this.getNewChartObject();
     // I originally dug out a default background (width, height, margins)
     // But w/h are extracted by updateSizes, based on platform/section
     // Margins are currently done on dispatch, altho I may change that
     // to allow user-overwrite
     // Delete default type from metadata:
-    // NOTE: don't really like this... is there a better location
-    // for the default type in the lookups?
-    Reflect.deleteProperty(metadata, 'type');
     // NOTE: keeping panel no/of/rows in metadata
     config.metadata = metadata;
     /* eslint-disable no-console */
@@ -200,7 +221,7 @@ export default class SilverEditor extends React.Component {
   // Updates size values in aCO, based on (sub-)platformm and section
   updateSizes(redisplay) {
     // Values from aCO's metadata:
-    const metadata = this.activeConfigObj.metadata;
+    const metadata = this.configObject.metadata;
     const platform = metadata.platform;
     const subplatform = metadata.subplatform;
     const section = metadata.section;
@@ -217,7 +238,7 @@ export default class SilverEditor extends React.Component {
       height: subplatformNode.height,
       width: subplatformNode.width,
     };
-    this.activeConfigObj.background.outerbox.dimensions = dims;
+    this.configObject.background.outerbox.dimensions = dims;
     // If requested, update the display...
     if (redisplay) {
       this.populateFormElements();
@@ -298,15 +319,15 @@ export default class SilverEditor extends React.Component {
   fieldUpdates() {
     // I need to fetch in various properties
     // We need to know:
-    const section = this.activeConfigObj.metadata.section;
-    const platform = this.activeConfigObj.metadata.platform;
+    const section = this.configObject.metadata.section;
+    const platform = this.configObject.metadata.platform;
     // Margins
     // Where do I get margins from? Function should, in theory, return a node
     // where I can find what I want, either specific or default...
     // Args 1 & 2 are platform and section; subsequent arguments will be 'spread'
     // into an array leading to a specific sub-node...
     const margins = this.findPreferencesNode(platform, section, [ 'background', 'outerbox', 'margins' ]);
-    this.activeConfigObj.background.margins = margins;
+    this.configObject.background.margins = margins;
     //
     // Next up: background shapes...
     // List is defined in defaults
@@ -316,17 +337,19 @@ export default class SilverEditor extends React.Component {
       const oneShape = this.findPreferencesNode(platform, section, [ 'background', 'shapes', shapeKeys[iii] ]);
       shapeArray.push(oneShape);
     }
-    this.activeConfigObj.background.shapes = shapeArray;
+    this.configObject.background.shapes = shapeArray;
+    // Kill the redundant 'type' property in the metadata node
+    // NOTE: don't really like this... is there a better location
+    // for the default type in the lookups?
+    Reflect.deleteProperty(this.configObject.metadata, 'type');
     // NOTE: I may have to do validation...
-    // Now pack the activeCO into the collection...
-    const coIndex = this.activeConfigObj.metadata.panels.number;
     // NOTE: flakey -- assumes some sort of sequentiality, or something...
-    // I imagine I need to check current length and plug any gaps with
+    // const chartindex = this.configObject.metadata.chartindex;
+    // I imagine I need to check charts array and plug any gaps with
     // an empty object...
-    this.configObjArray[coIndex] = this.activeConfigObj;
     /* eslint-disable no-console */
     console.log('Hopefully ready to send something upstairs...');
-    console.log(this.configObjArray);
+    console.log(this.configObject);
     /* eslint-enable no-console */
   }
 
@@ -336,8 +359,8 @@ export default class SilverEditor extends React.Component {
   // ...and children (array, possible empty, and currently redundant)
   handlePlatformFromTabBar(obj) {
     // Reset reference object:
-    this.activeConfigObj.metadata.platform = obj.parent;
-    this.activeConfigObj.metadata.subplatform = obj.child;
+    this.configObject.metadata.platform = obj.parent;
+    this.configObject.metadata.subplatform = obj.child;
     this.updateSizes(true);
     this.fieldUpdates();
   }
@@ -350,8 +373,8 @@ export default class SilverEditor extends React.Component {
   unpickPlatforms() {
     // Get default platform and all platform nodes from lookup:
     // const defaultPlatform = DefaultPreferences.metadata.defaults.platform;
-    const platform = this.activeConfigObj.metadata.platform;
-    const section = this.activeConfigObj.metadata.section;
+    const platform = this.configObject.metadata.platform;
+    const section = this.configObject.metadata.section;
     // Result will be an array of platform definitions
     const platforms = [];
     // Loop by platform objects:
@@ -461,7 +484,9 @@ export default class SilverEditor extends React.Component {
   // HANDLE LAYOUT TYPE CHANGE
   // Listener to change event on chart Type dropdown
   handleLayoutTypeSelectChange(evt) {
-    this.activeConfigObj.metadata.type = evt.target.value;
+    const type = evt.target.value;
+    const chartindex = this.configObject.metadata.chartindex;
+    this.configObject.charts[chartindex].type = type;
     // Don't do updateSizes (don't want to overwrite any user-
     // change of sizes...)
     this.fieldUpdates();
@@ -470,7 +495,7 @@ export default class SilverEditor extends React.Component {
   // HANDLE LAYOUT SECTION CHANGE
   // Listener to change event on Section dropdown
   handleLayoutSectionChange(evt) {
-    const metadata = this.activeConfigObj.metadata;
+    const metadata = this.configObject.metadata;
     const newSection = evt.target.value;
     metadata.section = newSection;
     // But I also need to reset subplatform to default
@@ -498,7 +523,7 @@ export default class SilverEditor extends React.Component {
   // HANDLE LAYOUT PANEL CHANGE
   // Change to panel number, total or rows...
   handleLayoutPanelChange(evt) {
-    const panels = this.activeConfigObj.metadata.panels;
+    const panels = this.configObject.metadata.panels;
     // Extract id and val from event
     const targ = evt.target;
     const targetId = targ.id.split('-')[1];
@@ -515,6 +540,8 @@ export default class SilverEditor extends React.Component {
       // NOTE: ideally there'd be some sort of alert...
       targ.value = oldVal;
     }
+    // And send it all upstairs...
+    this.fieldUpdates();
   }
   // HANDLE LAYOUT PANEL CHANGE ends
 
