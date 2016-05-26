@@ -22,7 +22,7 @@ export default class SilverEditor extends React.Component {
   static get propTypes() {
     return {
       // Callback to Sibyl
-      passUpdatedConfig: React.PropTypes.func.isRequired,
+      onPassUpdatedConfig: React.PropTypes.func.isRequired,
       // Default fold definitions, which it seems reasonable to keep here...
       folds: React.PropTypes.object,
       // If I'm debugging Editor directly, I just want to know, so I
@@ -45,12 +45,6 @@ export default class SilverEditor extends React.Component {
           valid: false, open: true },
         scales: { iden: 'scales', display: 'Scales', defaultText: 'Chart scales',
           valid: false, open: false },
-      },
-      passUpdatedConfig: (evt) => {
-        /* eslint-disable no-console */
-        // So we can see what we're tossing out of the basket:
-        console.log(evt);
-        /* eslint-enable */
       },
     };
   }
@@ -351,7 +345,7 @@ export default class SilverEditor extends React.Component {
       console.log(this.configObject);
       /* eslint-enable no-console */
     }
-    this.props.passUpdatedConfig(this.configObject);
+    this.props.onPassUpdatedConfig(this.configObject);
   }
 
   // FIELD PLATFORM FROM TAB BAR

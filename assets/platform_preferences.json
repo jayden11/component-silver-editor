@@ -25,7 +25,7 @@
           "margins":{}
         },
         "shapes": {
-          "bb2": {"width": "3px", "height": "12px"}
+          "bboxB": {"width": "3", "height": "12"}
         }
       }
     }

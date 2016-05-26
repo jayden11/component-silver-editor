@@ -9,7 +9,7 @@
       "margins": {"left": 6, "right": 6, "top": 6, "bottom": 6}
     },
     "shapes": {
-      "bb1": {
+      "bboxA": {
         "name": "Main background box",
         "note": "This element MUST exist, set to 100% width and height...",
         "shape": "rect",
@@ -22,7 +22,7 @@
         "adjustable": {"height": true, "width": true},
         "fill": "#D5E4EA"
       },
-      "bb2": {
+      "bboxB": {
         "name": "Sub-background box (red flash)",
         "note": "Size change for Print.LD, at least",
         "shape": "rect",
@@ -30,12 +30,12 @@
         "display": true,
         "x":  0,
         "y": 0,
-        "width": "5px",
-        "height": "15px",
+        "width": "5",
+        "height": "15",
         "adjustable": {"height": false, "width": false},
         "fill": "#FF0000"
       },
-      "bb3": {
+      "bboxC": {
         "name": "Background box: red line at top",
         "note": "Setting display property to false SHOULD (but doesn't yet) cause element not to display",
         "shape": "rect",
@@ -44,7 +44,7 @@
         "x":  0,
         "y": 0,
         "width":  "100%",
-        "height": "0.3px",
+        "height": "0.3",
         "adjustable": {"height": false, "width": true},
         "fill": "#FF0000"
       }
@@ -82,7 +82,7 @@
       "type": "line",
       "panels": {
         "number": 1,
-        "total": 1,
+        "total": 2,
         "rows": 1
       }
     }
